@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessage
 
+from runtime.graph.nodes.log_detective import log_detective_node
 from runtime.graph.nodes.machine_check import machine_check_node
 from runtime.graph.nodes.security_guard import _annotate_operational_issue, security_guard_node
 from security.schemas.findings import MachineFindings, SecurityFindings
@@ -234,3 +235,77 @@ async def test_machine_check_active_asset_writes_asset_scope_only():
 
     assert "findings" not in result
     assert result["asset_findings"][asset.asset_id]["machine"]["summary"] == "scoped infra"
+
+# ---------------------------------------------------------------------------
+# Graceful degradation on GraphRecursionError (tool budget exhausted)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_security_guard_degrades_on_recursion_error():
+    from langgraph.errors import GraphRecursionError
+
+    asset = NodeMachine.build(
+        ip="20.0.0.2",
+        node_type="product",
+        source="WAF",
+        origin_target="example.com",
+        target_type="domain",
+    )
+
+    async def _raise(*args, **kwargs):
+        raise GraphRecursionError("Recursion limit of 13 reached")
+
+    mock_agent = MagicMock()
+    mock_agent.ainvoke = _raise
+
+    with (
+        patch("runtime.graph.nodes.security_guard.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.security_guard.make_traced_tools", return_value=[]),
+        patch("runtime.graph.nodes.security_guard.create_react_agent", return_value=mock_agent),
+        patch("runtime.graph.nodes.security_guard.build_model", return_value=MagicMock()),
+    ):
+        result = await security_guard_node(
+            {
+                "target": "example.com",
+                "agent_task": "check security",
+                "inspection_scope": [asset.model_dump()],
+                "capability_scope": {
+                    "log": ["target"],
+                    "machine": [],
+                    "security": [asset.asset_id],
+                },
+            }
+        )
+
+    # Must not crash — return a deterministic coverage_gap partial finding.
+    assert result["findings"]["security"]["operational_issue"] == "coverage_gap"
+    assert result["findings"]["security"]["protection_status"] == "incomplete"
+    assert result["findings"]["security"]["cc_status"] == "no_data"
+    assert result["findings"]["security"]["risk_level"] == "low"
+    assert result["asset_findings"][asset.asset_id]["security"]["cc_status"] == "no_data"
+
+
+@pytest.mark.asyncio
+async def test_log_detective_degrades_on_recursion_error():
+    from langgraph.errors import GraphRecursionError
+
+    async def _raise(*args, **kwargs):
+        raise GraphRecursionError("Recursion limit reached")
+
+    mock_agent = MagicMock()
+    mock_agent.ainvoke = _raise
+
+    with (
+        patch("runtime.graph.nodes.log_detective.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.log_detective.make_traced_tools", return_value=[]),
+        patch("runtime.graph.nodes.log_detective.create_react_agent", return_value=mock_agent),
+        patch("runtime.graph.nodes.log_detective.build_model", return_value=MagicMock()),
+    ):
+        result = await log_detective_node(
+            {"target": "example.com", "agent_task": "analyse logs"}
+        )
+
+    assert result["findings"]["logs"]["risk_level"] == "low"
+    assert "did not converge" in result["findings"]["logs"]["summary"]
+

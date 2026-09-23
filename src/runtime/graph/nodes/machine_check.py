@@ -21,7 +21,7 @@ from runtime.graph.nodes._asset_scope import (
     build_asset_findings,
     select_primary_asset,
 )
-from runtime.graph.nodes._tool_tracing import make_traced_tools
+from runtime.graph.nodes._tool_tracing import ainvoke_react_agent, make_traced_tools
 from runtime.llm.profiles import ModelProfile, build_model
 from runtime.state.session import SessionState
 from security.playbooks.catalog import PlaybookKind, get_playbook
@@ -49,10 +49,45 @@ async def machine_check_node(state: SessionState) -> dict:
     traced_tools = make_traced_tools(PROM_TOOLS, "machine_check")
     agent = create_react_agent(model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt)
 
-    resp = await agent.ainvoke(
-        {"messages": [HumanMessage(content=task)]},
-        config={"recursion_limit": _RECURSION_LIMIT},
+    resp = await ainvoke_react_agent(
+        agent,
+        [HumanMessage(content=task)],
+        recursion_limit=_RECURSION_LIMIT,
+        node="machine_check",
+        write=write,
+        degrade_message="Infrastructure tool budget exhausted; returning partial finding",
     )
+    scoped_asset = active_asset(state)
+    primary_asset = scoped_asset or select_primary_asset(
+        state,
+        capability_scope_key="machine",
+        required_capabilities=("prom",),
+    )
+
+    if resp is None:
+        # Graceful degradation: deterministic partial finding instead of crash.
+        findings_dict = {
+            "summary": "Infrastructure check did not converge within the tool budget; metrics could not be collected.",
+            "connectivity": "unknown",
+            "system_metrics": "no data",
+            "tcp_status": "no data",
+            "health_status": "degraded",
+            "risk_level": "low",
+            "analysis_text": "Infrastructure check did not converge; no reliable metrics.",
+        }
+        write(StatusEvent(node="machine_check", message="Infrastructure check complete (partial)"))
+        result = {
+            "messages": [],
+            "asset_findings": build_asset_findings(
+                primary_asset,
+                finding_key="machine",
+                finding_value=findings_dict,
+            ),
+        }
+        if scoped_asset is None:
+            result["findings"] = {"machine": findings_dict}
+        return result
+
     analysis_text: str = resp["messages"][-1].content
 
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
@@ -66,12 +101,6 @@ async def machine_check_node(state: SessionState) -> dict:
     # Deterministic risk_level override — code-level policy, not LLM judgement.
     findings_dict = findings.model_dump()
     findings_dict["risk_level"] = default_policy().classify_machine(findings_dict)
-    scoped_asset = active_asset(state)
-    primary_asset = scoped_asset or select_primary_asset(
-        state,
-        capability_scope_key="machine",
-        required_capabilities=("prom",),
-    )
 
     write(StatusEvent(node="machine_check", message="Infrastructure check complete"))
 

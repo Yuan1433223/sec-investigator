@@ -34,13 +34,40 @@ from typing import Any
 
 from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.config import get_stream_writer
+from langgraph.errors import GraphRecursionError
 
-from runtime.events.protocol import ToolCallEvent, ToolResultEvent
+from runtime.events.protocol import StatusEvent, ToolCallEvent, ToolResultEvent
 
 _EARLY_STOP_TEMPLATE = (
     "[EARLY_STOP: {n} consecutive tool calls returned empty or zero results. "
     "Insufficient data for this target. Stop calling tools and summarize findings so far.]"
 )
+
+
+async def ainvoke_react_agent(
+    agent: Any,
+    messages: list,
+    *,
+    recursion_limit: int,
+    node: str,
+    write: Any,
+    degrade_message: str,
+) -> Any | None:
+    """Run a ReAct agent with a hard tool budget.
+
+    On GraphRecursionError (the agent exhausted its budget without producing a
+    final answer, e.g. under a flaky model), emit a status event and return
+    ``None`` so the caller can degrade to a partial finding instead of letting
+    the exception crash the whole investigation graph.
+    """
+    try:
+        return await agent.ainvoke(
+            {"messages": messages},
+            config={"recursion_limit": recursion_limit},
+        )
+    except GraphRecursionError:
+        write(StatusEvent(node=node, message=degrade_message))
+        return None
 
 
 def _is_empty_collection(value: Any) -> bool | None:

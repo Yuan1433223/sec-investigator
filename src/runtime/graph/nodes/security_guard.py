@@ -21,7 +21,7 @@ from runtime.graph.nodes._asset_scope import (
     build_asset_findings,
     select_primary_asset,
 )
-from runtime.graph.nodes._tool_tracing import make_traced_tools
+from runtime.graph.nodes._tool_tracing import ainvoke_react_agent, make_traced_tools
 from runtime.llm.profiles import ModelProfile, build_model
 from runtime.state.session import SessionState
 from security.playbooks.catalog import PlaybookKind, get_playbook
@@ -97,10 +97,49 @@ async def security_guard_node(state: SessionState) -> dict:
     llm = build_model(_PLAYBOOK.model_profile)
     traced_tools = make_traced_tools(_SECURITY_TOOLS, "security_guard")
     agent = create_react_agent(model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt)
-    resp = await agent.ainvoke(
-        {"messages": [HumanMessage(content=task)]},
-        config={"recursion_limit": _RECURSION_LIMIT},
+    resp = await ainvoke_react_agent(
+        agent,
+        [HumanMessage(content=task)],
+        recursion_limit=_RECURSION_LIMIT,
+        node="security_guard",
+        write=write,
+        degrade_message="Security tool budget exhausted; returning partial finding",
     )
+    scoped_asset = active_asset(state)
+    primary_asset = scoped_asset or select_primary_asset(
+        state,
+        capability_scope_key="security",
+        required_capabilities=("cc", "ddos"),
+    )
+
+    if resp is None:
+        # Graceful degradation: don't crash the investigation when the model
+        # cannot converge within the tool budget. Deterministic partial finding.
+        findings_dict = {
+            "summary": "Security check did not converge within the tool budget; protection status could not be collected.",
+            "cc_status": "no_data",
+            "ddos_status": "no_data",
+            "protection_status": "incomplete",
+            "risk_level": "low",
+            "analysis_text": "Security check did not converge; no reliable CC/DDoS status.",
+            "operational_issue": "coverage_gap",
+            "operational_issue_detail": (
+                "Model failed to converge within the tool budget; protection status could not be collected."
+            ),
+        }
+        write(StatusEvent(node="security_guard", message="Security check complete (partial)"))
+        result = {
+            "messages": [],
+            "asset_findings": build_asset_findings(
+                primary_asset,
+                finding_key="security",
+                finding_value=findings_dict,
+            ),
+        }
+        if scoped_asset is None:
+            result["findings"] = {"security": findings_dict}
+        return result
+
     analysis_text: str = resp["messages"][-1].content
 
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
@@ -116,12 +155,6 @@ async def security_guard_node(state: SessionState) -> dict:
     findings_dict = findings.model_dump()
     findings_dict["risk_level"] = default_policy().classify_security(findings_dict)
     _annotate_operational_issue(findings_dict)
-    scoped_asset = active_asset(state)
-    primary_asset = scoped_asset or select_primary_asset(
-        state,
-        capability_scope_key="security",
-        required_capabilities=("cc", "ddos"),
-    )
 
     write(StatusEvent(node="security_guard", message="Security check complete"))
 

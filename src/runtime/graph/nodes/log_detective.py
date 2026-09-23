@@ -16,7 +16,7 @@ from langgraph.config import get_stream_writer
 from langgraph.prebuilt import create_react_agent
 
 from runtime.events.protocol import StatusEvent
-from runtime.graph.nodes._tool_tracing import make_traced_tools
+from runtime.graph.nodes._tool_tracing import ainvoke_react_agent, make_traced_tools
 from runtime.llm.profiles import ModelProfile, build_model
 from runtime.state.session import SessionState
 from security.playbooks.catalog import PlaybookKind, get_playbook
@@ -66,10 +66,29 @@ async def log_detective_node(state: SessionState) -> dict:
         prompt=_PLAYBOOK.system_prompt,
     )
 
-    resp = await agent.ainvoke(
-        {"messages": [HumanMessage(content=task)]},
-        config={"recursion_limit": _RECURSION_LIMIT},
+    resp = await ainvoke_react_agent(
+        agent,
+        [HumanMessage(content=task)],
+        recursion_limit=_RECURSION_LIMIT,
+        node="log_detective",
+        write=write,
+        degrade_message="Log analysis tool budget exhausted; returning partial finding",
     )
+
+    if resp is None:
+        # Graceful degradation: deterministic partial finding instead of crash.
+        findings_dict = {
+            "summary": "Log analysis did not converge within the tool budget; results are partial.",
+            "qps_info": "No QPS data",
+            "error_rate": {},
+            "top_errors": [],
+            "risk_level": "low",
+            "analysis_text": "Log analysis did not converge; no reliable conclusions.",
+            "trend_comparison": None,
+        }
+        write(StatusEvent(node="log_detective", message="Log analysis complete (partial)"))
+        return {"messages": [], "findings": {"logs": findings_dict}}
+
     analysis_text: str = resp["messages"][-1].content
 
     # Structured extraction of the raw analysis
