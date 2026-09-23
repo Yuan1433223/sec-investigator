@@ -93,6 +93,22 @@ prompts; one runtime path over multiple parallel agent stacks.
    type. Worker eligibility must be determined from validated capabilities, not
    just target presence.
 
+## Data-source mode (DATA_SOURCE=fake/real)
+
+`Settings.data_source` selects the backend for every external adapter:
+
+- `fake` (default): every adapter builds its `httpx.AsyncClient` through
+  `security/fake/client.build_async_client`, which injects an `httpx.MockTransport`
+  serving synthetic fixtures (`src/security/fake/`) derived from
+  `docs/incidents.md`. The real DSL / PromQL / resolution logic is untouched —
+  only the HTTP layer is faked. This makes the whole suite and the demo run fully
+  offline, no VPN / enterprise systems.
+- `real`: normal network clients reaching the configured endpoints.
+
+When changing an adapter, route its client construction through
+`build_async_client` so the fake mode keeps working. Fixtures live in
+`src/security/fake/`; their tool-contract is locked by `tests/unit/test_fake_source.py`.
+
 ## Adapter and resource lifecycle policy
 
 All adapters holding external connections (`AsyncElasticsearch`, `httpx.AsyncClient`,

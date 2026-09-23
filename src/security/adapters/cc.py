@@ -4,6 +4,7 @@ import httpx
 from pydantic import BaseModel
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 
 class PointStatus(BaseModel):
@@ -33,7 +34,7 @@ class CCAdapter:
         self._base_url = s.cc_api_url.rstrip("/")
         self._key = s.cc_api_key
         self._timeout = s.cc_request_timeout
-        self._client = httpx.AsyncClient(verify=False, timeout=self._timeout)
+        self._client = build_async_client(s, verify=False, timeout=self._timeout)
 
     async def get_host_point(self, ips: list[str]) -> list[PointStatus]:
         """Return real-time PPS/bps data for the given IPs."""

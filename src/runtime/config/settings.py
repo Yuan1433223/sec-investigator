@@ -5,6 +5,9 @@ class AppSettings(BaseSettings):
     env: str = "dev"
     debug: bool = False
     log_level: str = "INFO"
+    # Data-source mode: "fake" (default — synthetic fixtures, fully offline)
+    # or "real" (reach the configured enterprise ES/Prometheus/security endpoints).
+    data_source: str = "fake"
 
 
 class ModelSettings(BaseSettings):

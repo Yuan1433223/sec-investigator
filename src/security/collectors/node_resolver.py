@@ -13,6 +13,7 @@ from typing import Literal
 import httpx
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 ProductType = Literal["WAF", "GF"]
 
@@ -33,7 +34,7 @@ class NodeResolver:
             (s.gf_ddos_api_url.rstrip("/"), s.gf_ddos_api_xtoken),
         ]
         timeout = min(s.waf_request_timeout, s.gf_request_timeout)
-        self._client = httpx.AsyncClient(verify=False, timeout=timeout)
+        self._client = build_async_client(s, verify=False, timeout=timeout)
 
     async def resolve_ip(
         self, ip: str

@@ -21,6 +21,7 @@ from typing import Any
 import httpx
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 
 def _calc_step(start_ts: int, end_ts: int) -> int:
@@ -63,7 +64,7 @@ class PrometheusAdapter:
         self._base = s.prometheus_url.rstrip("/")
         self._timeout = s.prometheus_request_timeout
         self._node_port = s.prometheus_node_port
-        self._client = httpx.AsyncClient(verify=False, timeout=self._timeout)
+        self._client = build_async_client(s, verify=False, timeout=self._timeout)
 
     def instance(self, ip: str) -> str:
         """Normalise bare IP to IP:port expected by node_exporter."""

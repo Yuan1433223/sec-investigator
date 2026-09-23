@@ -59,6 +59,14 @@ _SCENARIOS = [
                 "risk_level": "medium",
                 "analysis_text": "Stub",
             },
+            "machine": {
+                "summary": "节点117.24.6.116健康：CPU 4.2%、内存 28%、TCP连接约1900，无过载迹象，源站稳定。",
+                "cpu_usage": "4.2%",
+                "memory_usage": "28.0%",
+                "tcp_established": 1900,
+                "risk_level": "low",
+                "analysis_text": "Stub",
+            },
         },
         "report_summary": "4xx请求量突增约1000%，主要由分布式爬虫/批量扫描流量洪峰引发，源站服务稳定。",  # noqa: E501
         "expected_alert_status": "warning",
@@ -84,6 +92,14 @@ _SCENARIOS = [
                 "cc_status": "no CC attack",
                 "ddos_status": "no DDoS alert",
                 "protection_status": "normal",
+                "risk_level": "low",
+                "analysis_text": "Stub",
+            },
+            "machine": {
+                "summary": "节点118.178.13.52健康：CPU 5.6%、内存 22%、TCP连接约1500。故障在源站应用层，节点侧无异常。",
+                "cpu_usage": "5.6%",
+                "memory_usage": "22.0%",
+                "tcp_established": 1500,
                 "risk_level": "low",
                 "analysis_text": "Stub",
             },
@@ -113,6 +129,14 @@ _SCENARIOS = [
                 "ddos_status": "no DDoS alert",
                 "protection_status": "normal, rate limiting active",
                 "risk_level": "medium",
+                "analysis_text": "Stub",
+            },
+            "machine": {
+                "summary": "节点112.90.155.1高负载：CPU 85%、内存 70%、TCP连接约60000，与QPS突增一致，印证源站过载。",
+                "cpu_usage": "85.0%",
+                "memory_usage": "70.0%",
+                "tcp_established": 60000,
+                "risk_level": "high",
                 "analysis_text": "Stub",
             },
         },
@@ -171,7 +195,7 @@ async def test_replay_domain_incident_completes(scenario):
     routes directly to reporter. Verifies:
     - status=completed
     - 1 investigation artifact with correct target
-    - findings preserved (logs + security, no machine)
+    - findings preserved (logs + machine + security — domains resolve to node IPs)
     - artifact contains report payload
     """
     report = InvestigationReport(
@@ -208,8 +232,8 @@ async def test_replay_domain_incident_completes(scenario):
 
     findings = result["findings"]
     assert "logs" in findings
+    assert "machine" in findings, "resolved domain nodes should yield machine findings"
     assert "security" in findings
-    assert "machine" not in findings, "machine_check must not run for domain targets"
 
     assert findings["logs"]["risk_level"] == scenario["findings"]["logs"]["risk_level"]
 
@@ -266,9 +290,9 @@ async def test_replay_streams_events(scenario):
     reporter_events = [e for e in status_events if e.node == "reporter"]
     assert len(reporter_events) >= 1
 
-    # machine_check must never appear in the event stream
+    # machine_check does not appear: findings are pre-injected so the worker is skipped
     machine_events = [e for e in status_events if e.node == "machine_check"]
-    assert len(machine_events) == 0, "machine_check must not run for domain targets"
+    assert len(machine_events) == 0, "machine_check skipped when findings are pre-injected"
 
 
 # ---------------------------------------------------------------------------
@@ -316,12 +340,11 @@ def test_all_three_scenarios_are_domain_targets():
 
 def test_scenario_findings_keys_satisfy_domain_requirements():
     """All scenario findings dicts contain the required keys for domain targets."""
-    domain_required = {"logs", "security"}
+    domain_required = {"logs", "machine", "security"}
     for scenario in _SCENARIOS:
         keys = set(scenario["findings"].keys())
         missing = domain_required - keys
         assert not missing, f"Scenario {scenario['id']} missing findings: {missing}"
-        assert "machine" not in keys, f"Scenario {scenario['id']} should not have machine findings"
 
 
 def test_critical_risk_findings_trigger_approval_policy():

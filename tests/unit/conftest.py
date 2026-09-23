@@ -8,6 +8,7 @@ from runtime.config.settings import Settings
 def test_settings() -> Settings:
     """Minimal Settings with fake URLs — never hits real services."""
     return Settings(
+        data_source="real",  # these tests exercise real HTTP via respx mocks
         cc_api_url="http://fake-cc",
         cc_api_key="test-cc-key",
         cc_request_timeout=5,

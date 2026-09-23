@@ -13,6 +13,7 @@ from typing import Literal
 import httpx
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 _MAX_RULES_DISPLAY = 10
 
@@ -45,7 +46,7 @@ class GFCollector:
             _Endpoint(s.gf_cdn_api_url.rstrip("/"), s.gf_cdn_api_xtoken),
             _Endpoint(s.gf_ddos_api_url.rstrip("/"), s.gf_ddos_api_xtoken),
         ]
-        self._client = httpx.AsyncClient(verify=False, timeout=self._timeout)
+        self._client = build_async_client(s, verify=False, timeout=self._timeout)
 
     # ------------------------------------------------------------------
     # Public API

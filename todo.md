@@ -34,10 +34,12 @@
 - [x] 清理杂项（pytest_cache 已 ignore；空目录已删）
 
 ### M4 数据源 fake 化（接上一轮讨论）
-- [ ] 新增 `DATA_SOURCE=fake` 源选择，adapter 层加 fake 后端（复用 respx / fixture）
-- [ ] 从 `context.md` 3 条真实事故反推造 fixture（ES/Prom/安全状态）
-- [ ] 测试：mock 资产解析 Collector，全套件压回分钟级
-- [ ] `.env` 清理：移除真实端点/凭据，示例化
+- [x] `DATA_SOURCE=fake/real` 源选择；`security/fake/client.build_async_client` 单一 seam（httpx.MockTransport），7 个 adapter/collector 全接线
+- [x] `security/fake/` 从 `docs/incidents.md` 3 条真实事故造 fixture（ES/Prom/CC/DDoS/WAF/GF/RAG）
+- [x] 测试：新增 `tests/unit/test_fake_source.py`（10 用例锁 fixture→工具契约）；全套件 495 秒级、全离线
+- [x] `.env`/`.env.example`：`DATA_SOURCE=fake`、占位 base URL、脱敏
+- [x] 离线 demo：`examples/run_demo.py`（三条事故目标可选）
+- [x] replay 测试更新：域名解析成功→预注入 machine 金标准（节点健康/过载）
 
 ---
 

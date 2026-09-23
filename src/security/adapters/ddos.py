@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 
 class DDoSAdapter:
@@ -16,7 +17,8 @@ class DDoSAdapter:
         self._base_url = s.ddos_api_url.rstrip("/")
         self._key = s.ddos_api_key
         self._timeout = s.ddos_request_timeout
-        self._client = httpx.AsyncClient(
+        self._client = build_async_client(
+            s,
             verify=False,
             timeout=self._timeout,
             headers={

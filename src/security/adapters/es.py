@@ -22,6 +22,7 @@ from typing import Any, Literal
 import httpx
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +50,8 @@ class ESAdapter:
         self._timeout = s.es_request_timeout
         self._gf_index = s.es_gf_index
         self._waf_index = s.es_waf_index
-        self._client = httpx.AsyncClient(
-            verify=False,           # internal ES uses self-signed cert
-            timeout=self._timeout,
+        self._client = build_async_client(
+            s, verify=False, timeout=self._timeout,
         )
 
     def _index_for(self, source: Source) -> str:

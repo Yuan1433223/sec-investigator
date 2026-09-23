@@ -13,6 +13,7 @@ from typing import Literal
 import httpx
 
 from runtime.config.settings import Settings, get_settings
+from security.fake.client import build_async_client
 
 
 @dataclass
@@ -33,7 +34,7 @@ class WAFCollector:
         self._base_url = s.waf_api_url.rstrip("/")
         self._token = s.waf_api_token
         self._timeout = s.waf_request_timeout
-        self._client = httpx.AsyncClient(verify=False, timeout=self._timeout)
+        self._client = build_async_client(s, verify=False, timeout=self._timeout)
 
     async def query_nodes_by_domain(
         self, domain: str, port: str | int | None = None

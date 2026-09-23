@@ -35,6 +35,7 @@ START → asset_resolution → supervisor
 | 阈值 | 全部在 `EvidencePolicy`（代码），不在 prompt |
 | 状态 | `TypedDict` + reducer，显式合并 |
 | 模型 | `build_model(profile)` 抽象，无厂商锁定 |
+| 数据源 | `DATA_SOURCE=fake/real` 单一 seam（httpx.MockTransport），离线可演示 |
 | 连接生命周期 | adapter 懒加载、closure 持有、`aclose()`，无模块级单例 |
 | 事件 | `ToolCall/ToolResult/Artifact/Final/Status/ApprovalRequest` 全流 |
 | 持久化 | Checkpoint：SQLite（dev）/ Postgres（prod） |
@@ -43,12 +44,27 @@ START → asset_resolution → supervisor
 
 ```bash
 uv sync                       # 安装依赖（Python ≥3.12）
-cp .env.example .env          # 填写 LLM 密钥等
+cp .env.example .env          # 填写 LLM 密钥
 uv run sec-investigator       # 启动 FastAPI（默认 :18230）
 uv run pytest -q              # 全量测试（离线、秒级）
 ```
 
 配置：`src/runtime/config/settings.py`（pydantic-settings，读 `.env`）。
+
+### 离线演示（DATA_SOURCE=fake）
+
+默认 `DATA_SOURCE=fake`：所有数据源（ES / Prometheus / CC / DDoS / WAF / GF / RAG）
+由 `src/security/fake/` 提供**合成但真实**的 fixture（源自 `docs/incidents.md` 的 3 条
+真实事故），无需企业 VPN 或任何内网系统即可跑通整条调查链。仅需在 `.env` 配置一个
+LLM API key 供 agent 推理与写报告：
+
+```bash
+uv run python examples/run_demo.py game.ali213.net        # 4xx 爬虫扫描
+uv run python examples/run_demo.py api2.xs2027.cn         # 5xx 源站应用故障
+uv run python examples/run_demo.py kk331dsdi32onew.liu6t.cn  # 高并发源站过载
+```
+
+切到真实数据源：`.env` 里设 `DATA_SOURCE=real`（需内网可达 + 凭据）。
 
 ## 目录结构
 

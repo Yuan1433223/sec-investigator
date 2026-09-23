@@ -33,6 +33,7 @@ class RAGEngine:
 
     def __init__(self, settings: Settings | None = None) -> None:
         s = settings or get_settings()
+        self._data_source = s.data_source
         self._milvus_host = s.milvus_host
         self._milvus_port = s.milvus_port
         self._milvus_user = s.milvus_user
@@ -66,7 +67,18 @@ class RAGEngine:
         """Vector search returning ranked document dicts.
 
         Each result: ``{"text": str, "source": str, "score": float}``
+
+        In ``DATA_SOURCE=fake`` mode this short-circuits to a small built-in
+        runbook KB so the demo stays fully offline.
         """
+        if self._data_source == "fake":
+            from security.fake.fixtures import search_kb
+
+            return [
+                {"text": d["text"], "source": d["source"], "score": 0.85}
+                for d in search_kb(query, top_k)
+            ]
+
         self._connect()
 
         query_vec = self._embed(query)
