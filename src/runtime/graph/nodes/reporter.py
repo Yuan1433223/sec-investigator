@@ -54,7 +54,7 @@ async def reporter_node(state: SessionState) -> dict:
     )
 
     llm = build_model(_PLAYBOOK.model_profile)
-    report: InvestigationReport = await llm.with_structured_output(InvestigationReport).ainvoke(
+    report: InvestigationReport = await llm.with_structured_output(InvestigationReport, method="function_calling").ainvoke(
         [
             SystemMessage(content=_PLAYBOOK.system_prompt),
             HumanMessage(content=user_message),

@@ -105,7 +105,8 @@ async def security_guard_node(state: SessionState) -> dict:
 
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
     findings: SecurityFindings = await extractor.with_structured_output(
-        SecurityFindings
+        SecurityFindings,
+        method="function_calling"
     ).ainvoke(
         "Extract structured security findings from this protection status"
         f" analysis:\n\n{analysis_text}"

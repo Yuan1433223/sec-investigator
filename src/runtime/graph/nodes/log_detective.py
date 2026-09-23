@@ -74,7 +74,7 @@ async def log_detective_node(state: SessionState) -> dict:
 
     # Structured extraction of the raw analysis
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
-    findings: LogFindings = await extractor.with_structured_output(LogFindings).ainvoke(
+    findings: LogFindings = await extractor.with_structured_output(LogFindings, method="function_calling").ainvoke(
         f"Extract structured findings from this log analysis:\n\n{analysis_text}"
     )
 

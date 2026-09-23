@@ -57,7 +57,8 @@ async def machine_check_node(state: SessionState) -> dict:
 
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
     findings: MachineFindings = await extractor.with_structured_output(
-        MachineFindings
+        MachineFindings,
+        method="function_calling"
     ).ainvoke(
         f"Extract structured machine findings from this infrastructure analysis:\n\n{analysis_text}"
     )

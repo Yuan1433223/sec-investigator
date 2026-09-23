@@ -105,7 +105,8 @@ async def supervisor_node(state: SessionState) -> dict:
     )
     llm = build_model(_PLAYBOOK.model_profile)
     decision: AgentTaskDecision = await llm.with_structured_output(
-        AgentTaskDecision
+        AgentTaskDecision,
+        method="function_calling"
     ).ainvoke(
         [
             SystemMessage(content=_PLAYBOOK.system_prompt),
