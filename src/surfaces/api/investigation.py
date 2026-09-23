@@ -19,9 +19,16 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
+from langgraph.types import Command
+
 from runtime.checkpoint.factory import get_checkpointer
 from runtime.graph.investigation import build_investigation_graph
-from surfaces.web.sse import DONE_FRAME, runtime_event_to_sse, sse_frame_to_wire
+from surfaces.web.sse import (
+    DONE_FRAME,
+    SSEFrame,
+    runtime_event_to_sse,
+    sse_frame_to_wire,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +39,13 @@ class InvestigationRequest(BaseModel):
     target: str
     session_id: str
     question: str | None = None
+
+class ResumeRequest(BaseModel):
+    """Resume an interrupted investigation after the HITL approval gate."""
+
+    session_id: str
+    approved: bool
+    approver: str
 
 
 def _build_input(req: InvestigationRequest) -> dict[str, Any]:
@@ -79,6 +93,36 @@ async def stream_investigation(req: InvestigationRequest) -> StreamingResponse:
             logger.exception("Stream error for session=%s", req.session_id)
             from surfaces.web.sse import SSEFrame
 
+            frame = SSEFrame(type="error", data={"message": str(exc), "node": None})
+            yield sse_frame_to_wire(frame)
+        finally:
+            yield DONE_FRAME
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
+
+
+@router.post("/resume")
+async def resume_investigation(req: ResumeRequest) -> StreamingResponse:
+    """Resume a session paused at the approval gate (HITL).
+
+    Rebuilds the graph on the same persistent checkpointer (thread_id = session_id)
+    and streams the remaining RuntimeEvent frames from the resume point.
+    """
+
+    async def _generate() -> AsyncIterator[str]:
+        try:
+            async with get_checkpointer() as checkpointer:
+                graph = build_investigation_graph(checkpointer=checkpointer)
+                async for event in graph.astream(
+                    Command(resume={"approved": req.approved, "approver": req.approver}),
+                    config=_graph_config(req.session_id),
+                    stream_mode="custom",
+                ):
+                    frame = runtime_event_to_sse(event)
+                    if frame is not None:
+                        yield sse_frame_to_wire(frame)
+        except Exception as exc:
+            logger.exception("Resume error for session=%s", req.session_id)
             frame = SSEFrame(type="error", data={"message": str(exc), "node": None})
             yield sse_frame_to_wire(frame)
         finally:

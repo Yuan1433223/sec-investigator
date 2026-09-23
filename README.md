@@ -66,6 +66,22 @@ uv run python examples/run_demo.py kk331dsdi32onew.liu6t.cn  # 高并发源站�
 
 切到真实数据源：`.env` 里设 `DATA_SOURCE=real`（需内网可达 + 凭据）。
 
+### Web 前端（demo 可视化）
+
+`web/` 是 Vite + React + TypeScript 的单页前端，消费 `POST /investigation/stream`
+的 SSE 事件流：实时展示调查各阶段（阶段轨 + 执行时间线）、分项发现、最终报告，
+并在高危触发审批门时弹出**人工审批**（批准/拒绝后经 `POST /investigation/resume`
+恢复会话继续）。
+
+```bash
+cd web
+npm install
+npm run dev     # 开发：http://localhost:5173（proxy 到 :18230）
+npm run build   # 产物 dist/，由 FastAPI 在 :18230 直接托管
+```
+
+启动后端后访问 `http://localhost:18230` 即可使用（无需单独起前端）。
+
 ## 目录结构
 
 ```
@@ -73,6 +89,7 @@ src/
   runtime/     # LangGraph 运行时内核：state / graph / events / checkpoint / llm / approvals / artifacts
   security/    # 安全业务域：adapters / collectors / assets / policies / playbooks / schemas / tools / rag
   surfaces/    # 入口与交付：api / webhook / feishu / sse
+web/           # Vite + React + TS 单页前端（demo 可视化）
 tests/
   unit/        # 单元测试（respx 离线 mock）
   replay/      # 3 条真实事故回放
@@ -84,7 +101,7 @@ docs/
 
 ## 测试
 
-`uv run pytest -q` → 485 用例，全量离线、约 6 秒。外部数据源一律用 respx/fixture mock，不触真实端点。
+`uv run pytest -q` → 495 用例，全量离线、约 6 秒。外部数据源一律用 respx/fixture mock，不触真实端点。
 
 ## 路线图
 
