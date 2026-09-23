@@ -116,15 +116,15 @@ async def security_guard_node(state: SessionState) -> dict:
         # Graceful degradation: don't crash the investigation when the model
         # cannot converge within the tool budget. Deterministic partial finding.
         findings_dict = {
-            "summary": "Security check did not converge within the tool budget; protection status could not be collected.",
+            "summary": "安全防护检查未能在工具预算内收敛，防护状态无法采集。",
             "cc_status": "no_data",
             "ddos_status": "no_data",
             "protection_status": "incomplete",
             "risk_level": "low",
-            "analysis_text": "Security check did not converge; no reliable CC/DDoS status.",
+            "analysis_text": "安全防护检查未收敛，未得出可靠的 CC/DDoS 状态。",
             "operational_issue": "coverage_gap",
             "operational_issue_detail": (
-                "Model failed to converge within the tool budget; protection status could not be collected."
+                "模型未能在工具预算内收敛，防护状态无法采集。"
             ),
         }
         write(StatusEvent(node="security_guard", message="Security check complete (partial)"))
@@ -147,7 +147,7 @@ async def security_guard_node(state: SessionState) -> dict:
         SecurityFindings,
         method="function_calling"
     ).ainvoke(
-        "Extract structured security findings from this protection status"
+        "用简体中文填写所有字段内容。Extract structured security findings from this protection status"
         f" analysis:\n\n{analysis_text}"
     )
 

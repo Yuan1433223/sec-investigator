@@ -307,5 +307,5 @@ async def test_log_detective_degrades_on_recursion_error():
         )
 
     assert result["findings"]["logs"]["risk_level"] == "low"
-    assert "did not converge" in result["findings"]["logs"]["summary"]
+    assert "未能在工具预算内收敛" in result["findings"]["logs"]["summary"]
 

@@ -47,10 +47,10 @@ async def reporter_node(state: SessionState) -> dict:
     asset_findings_text = _format_asset_findings(asset_findings)
 
     user_message = (
-        f"Target: {target}\n\n"
-        f"Collected findings:\n\n{findings_text}\n\n"
-        f"Asset-scoped findings:\n\n{asset_findings_text}\n\n"
-        "Generate the investigation report."
+        f"目标: {target}\n\n"
+        f"已收集的分项发现:\n\n{findings_text}\n\n"
+        f"资产维度发现:\n\n{asset_findings_text}\n\n"
+        "请用简体中文撰写整份调查报告（含摘要、告警状态、各维度结论与根因分析）。"
     )
 
     llm = build_model(_PLAYBOOK.model_profile)
@@ -70,7 +70,7 @@ async def reporter_node(state: SessionState) -> dict:
         asset_findings=asset_findings,
         report=report.model_dump(mode="json"),
         risk_level=risk_level,
-        summary=report.summary or "Investigation complete.",
+        summary=report.summary or "调查完成。",
         recommendations=_parse_recommendations(report.recommendations),
     )
 
@@ -96,7 +96,7 @@ def _format_findings(findings: dict) -> str:
     if not findings:
         return "No findings collected."
     sections = [
-        f"### {key.upper()} FINDINGS\n{value}"
+        f"### {key} 发现\n{value}"
         for key, value in findings.items()
     ]
     return "\n\n".join(sections)

@@ -78,12 +78,12 @@ async def log_detective_node(state: SessionState) -> dict:
     if resp is None:
         # Graceful degradation: deterministic partial finding instead of crash.
         findings_dict = {
-            "summary": "Log analysis did not converge within the tool budget; results are partial.",
-            "qps_info": "No QPS data",
+            "summary": "日志分析未能在工具预算内收敛，结果为部分结论。",
+            "qps_info": "无 QPS 数据",
             "error_rate": {},
             "top_errors": [],
             "risk_level": "low",
-            "analysis_text": "Log analysis did not converge; no reliable conclusions.",
+            "analysis_text": "日志分析未收敛，未得出可靠结论。",
             "trend_comparison": None,
         }
         write(StatusEvent(node="log_detective", message="Log analysis complete (partial)"))
@@ -94,7 +94,7 @@ async def log_detective_node(state: SessionState) -> dict:
     # Structured extraction of the raw analysis
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
     findings: LogFindings = await extractor.with_structured_output(LogFindings, method="function_calling").ainvoke(
-        f"Extract structured findings from this log analysis:\n\n{analysis_text}"
+        f"用简体中文填写所有字段内容。Extract structured findings from this log analysis:\n\n{analysis_text}"
     )
 
     # Deterministic risk_level override — code-level policy, not LLM judgement.

@@ -67,13 +67,13 @@ async def machine_check_node(state: SessionState) -> dict:
     if resp is None:
         # Graceful degradation: deterministic partial finding instead of crash.
         findings_dict = {
-            "summary": "Infrastructure check did not converge within the tool budget; metrics could not be collected.",
+            "summary": "基础设施检查未能在工具预算内收敛，指标无法采集。",
             "connectivity": "unknown",
-            "system_metrics": "no data",
-            "tcp_status": "no data",
+            "system_metrics": "无数据",
+            "tcp_status": "无数据",
             "health_status": "degraded",
             "risk_level": "low",
-            "analysis_text": "Infrastructure check did not converge; no reliable metrics.",
+            "analysis_text": "基础设施检查未收敛，未得出可靠指标。",
         }
         write(StatusEvent(node="machine_check", message="Infrastructure check complete (partial)"))
         result = {
@@ -95,7 +95,7 @@ async def machine_check_node(state: SessionState) -> dict:
         MachineFindings,
         method="function_calling"
     ).ainvoke(
-        f"Extract structured machine findings from this infrastructure analysis:\n\n{analysis_text}"
+        f"用简体中文填写所有字段内容。Extract structured machine findings from this infrastructure analysis:\n\n{analysis_text}"
     )
 
     # Deterministic risk_level override — code-level policy, not LLM judgement.

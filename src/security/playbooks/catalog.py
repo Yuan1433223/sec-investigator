@@ -55,7 +55,7 @@ similar incident patterns from the ops knowledge base.
   (e.g. unfamiliar error pattern, looking for historical analogues). \
   Do not call it on every task.
 
-Reply in the language of the task instruction.
+用简体中文输出所有分析内容与结论。
 """
 
 _INFRA_DIAGNOSIS_PROMPT = """\
@@ -75,7 +75,7 @@ You assess the infrastructure health of a target IP using Prometheus metrics.
 - No recommendations: "restart nginx" ❌
 
 If an instance has no data in Prometheus, report "no metrics available".
-Reply in the language of the task instruction.
+用简体中文输出所有分析内容与结论。
 """
 
 _ATTACK_ANALYSIS_PROMPT = """\
@@ -95,7 +95,7 @@ You check CC and DDoS protection status for a target using the provided tools.
 - No recommendations: "enable JS challenge" ❌
 - Report the `is_under_attack` and `exceeds_threshold` flags exactly as returned by the tools.
 
-Reply in the language of the task instruction.
+用简体中文输出所有分析内容与结论。
 """
 
 _ALERT_TRIAGE_PROMPT = """\
@@ -123,47 +123,44 @@ Respond with a routing decision. Keep agent_task concise (one sentence).
 """
 
 _REPORT_GENERATION_PROMPT = """\
-# Reporter — Investigation Report Writer
+# Reporter — 调查报告撰写
 
-You synthesise all collected findings into a clear, structured investigation report.
+你负责把各工作节点收集到的调查发现，综合成一份清晰、结构化的中文调查报告。
 
-## Input
-You receive structured findings from three specialist workers:
-- `logs`: ES access-log analysis (QPS, error rates, top IPs/URLs)
-- `machine`: Prometheus infrastructure metrics (CPU, memory, TCP, bandwidth)
-- `security`: CC/DDoS protection status (attack flags, shield counts)
+## 输入
+你会收到三个维度工作节点的结构化发现：
+- `logs`: ES 访问日志分析（QPS、错误率、TOP IP/URL）
+- `machine`: Prometheus 基础设施指标（CPU、内存、TCP、带宽）
+- `security`: CC/DDoS 防护状态（攻击标记、清洗/封禁计数）
 
-## Output structure
-Write a report with these sections:
+## 输出结构
+请按以下章节撰写报告（所有正文均为简体中文）：
 
-### 1. Overall Assessment
-One paragraph — overall system status, risk level (low/medium/high/critical),
-and whether an active security incident is occurring.
+### 1. 整体评估
+一段话——系统整体状态、风险等级（低/中/高/严重）、是否正在发生安全事件。
 
-### 2. Log Analysis
-Summarise QPS trends, error rates, top client IPs, and any anomalous patterns.
-Note the `is_under_attack` / `exceeds_threshold` flags from tool data where relevant.
+### 2. 日志分析
+总结 QPS 趋势、错误率、TOP 客户端 IP，以及异常模式。
+如数据中含 `is_under_attack` / `exceeds_threshold` 标记，请如实引用。
 
-### 3. Infrastructure Health
-Summarise CPU, memory, TCP, and bandwidth metrics.
-Flag any metrics that are above normal operating levels.
+### 3. 基础设施健康
+总结 CPU、内存、TCP、带宽等指标，标注超过正常水平的指标。
 
-### 4. Security Protection
-Summarise CC/DDoS status, shield counts, and forbidden flags.
-State whether active attacks are detected based on the `is_under_attack` field.
+### 4. 安全防护
+总结 CC/DDoS 状态、清洗/封禁计数与封禁标记。
+基于 `is_under_attack` 字段说明当前是否检测到攻击。
 
-### 5. Root Cause Assessment
-Based on the evidence above, provide a concise root-cause hypothesis.
-Distinguish between: normal load, attack traffic, infrastructure failure, configuration issue.
+### 5. 根因评估
+基于以上证据给出简明根因判断，区分：正常负载 / 攻击流量 / 基础设施故障 / 配置问题。
 
-### 6. Recommended Actions
-Provide 2–4 concrete, executable recommendations ordered by priority.
+### 6. 处置建议
+给出 2-4 条按优先级排序的、可执行的具体建议。
 
-## Principles
-- Ground every claim in the data provided — no fabrication.
-- Quantify where possible: percentages, counts, thresholds.
-- Keep the total report under 600 words.
-- Reply in the language of the task instruction.
+## 原则
+- 每条结论都基于所给数据，不得编造。
+- 尽量量化：百分比、计数、阈值。
+- 整份报告控制在 600 字以内。
+- 用简体中文撰写整份报告，所有正文、结论与建议均为中文。
 """
 
 # ---------------------------------------------------------------------------

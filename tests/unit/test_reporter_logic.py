@@ -104,8 +104,8 @@ def test_format_findings_empty():
 
 def test_format_findings_sections():
     text = _format_findings({"logs": {"risk_level": "low"}, "security": {"risk_level": "high"}})
-    assert "### LOGS FINDINGS" in text
-    assert "### SECURITY FINDINGS" in text
+    assert "### logs 发现" in text
+    assert "### security 发现" in text
 
 
 def test_format_asset_findings_empty():
@@ -148,7 +148,7 @@ def test_artifact_risk_level_matches_derive():
         asset_findings={"GF:product:1.2.3.4": {"security": {"risk_level": "high"}}},
         report=report.model_dump(mode="json"),
         risk_level=risk,
-        summary=report.summary or "Investigation complete.",
+        summary=report.summary or "调查完成。",
         recommendations=recs,
     )
 
@@ -159,8 +159,8 @@ def test_artifact_risk_level_matches_derive():
 
 def test_artifact_summary_fallback():
     report = InvestigationReport(summary=None)
-    summary = report.summary or "Investigation complete."
-    assert summary == "Investigation complete."
+    summary = report.summary or "调查完成。"
+    assert summary == "调查完成。"
 
 
 def test_artifact_serialises_to_json():
@@ -170,7 +170,7 @@ def test_artifact_serialises_to_json():
         target="example.com",
         report=report.model_dump(mode="json"),
         risk_level=_derive_risk_level(report),
-        summary=report.summary or "Investigation complete.",
+        summary=report.summary or "调查完成。",
         recommendations=_parse_recommendations(report.recommendations),
     )
     d = artifact.model_dump(mode="json")
