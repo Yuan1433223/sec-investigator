@@ -1,0 +1,69 @@
+<html style="margin:0;padding:0;"><title>kks-next 作品集就绪度评估</title><div style="width:100%;box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,'Microsoft YaHei',sans-serif;color:#1f2430;background:#f6f7fb;padding:24px 20px;line-height:1.5;">
+  <div style="max-width:980px;margin:0 auto;">
+
+    <div style="background:linear-gradient(135deg,#1b2a4a,#24365c);color:#fff;border-radius:12px;padding:20px 24px;margin-bottom:18px;">
+      <div style="font-size:12px;letter-spacing:1px;color:#9fb3d9;margin-bottom:6px;">作品集就绪度评估 · kks-next（LangGraph 安全分析 agent）</div>
+      <div style="font-size:20px;font-weight:700;">方向正确、工程扎实 → <span style="color:#ffd76a;">值得继续</span>；但当前是「企内版」而非「可展示作品版」</div>
+      <div style="font-size:13px;color:#cfd9f0;margin-top:8px;">三层架构 · 确定性能力路由 · 代码级阈值 · 类型化状态 · HITL · 485 测试 · 3 条真实事故回放</div>
+    </div>
+
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+      <div style="flex:1 1 30%;min-width:250px;background:#fff;border:1px solid #e6e9f2;border-left:5px solid #d23f3f;border-radius:8px;padding:14px 16px;">
+        <div style="font-weight:700;color:#d23f3f;margin-bottom:6px;">门① 保密 &amp; 可独立运行</div>
+        <div style="font-size:13px;color:#3a4150;">.env 残留真实企内端点+凭据（ES/GF/WAF/PROM，连 LLM 都是内网中转 ai-code.kk30.net）→ 离 VPN 无法运行、公开=泄露</div>
+        <div style="font-size:12px;color:#556;margin-top:8px;background:#faf0f0;border-radius:6px;padding:6px 8px;">P0：清空 .env 改示例、移除凭据、加本地 fake/影子后端</div>
+      </div>
+      <div style="flex:1 1 30%;min-width:250px;background:#fff;border:1px solid #e6e9f2;border-left:5px solid #d9782c;border-radius:8px;padding:14px 16px;">
+        <div style="font-weight:700;color:#d9782c;margin-bottom:6px;">门② 测试卫生</div>
+        <div style="font-size:13px;color:#3a4150;">图级测试只 mock LLM、漏 asset_resolution → 真实触网（test_graph_with_mocked_supervisor 单用例 70s，全套件 &gt;280s）</div>
+        <div style="font-size:12px;color:#556;margin-top:8px;background:#fbf5ec;border-radius:6px;padding:6px 8px;">P0：资产解析可 mock + ES/Prom fake，压回分钟级</div>
+      </div>
+      <div style="flex:1 1 30%;min-width:250px;background:#fff;border:1px solid #e6e9f2;border-left:5px solid #8b5cf6;border-radius:8px;padding:14px 16px;">
+        <div style="font-weight:700;color:#8b5cf6;margin-bottom:6px;">门③ 版本历史</div>
+        <div style="font-size:13px;color:#3a4150;">目录不是 git 仓库，零 commit → 作品集最关键的「演进证据」缺失</div>
+        <div style="font-size:12px;color:#556;margin-top:8px;background:#f3effc;border-radius:6px;padding:6px 8px;">P0：git init + 分阶段提交，补演进叙事</div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #e6e9f2;border-radius:8px;padding:16px 18px;margin-bottom:18px;">
+      <div style="font-weight:700;margin-bottom:10px;">对标 GitHub 优质参考（连接器已检索）</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1 1 22%;min-width:190px;border:1px solid #e6e9f2;border-radius:8px;padding:10px 12px;background:#fafbff;">
+          <div style="font-size:13px;font-weight:700;">deepagents · 29k★</div>
+          <div style="font-size:12px;color:#556;">LangGraph 底座，HITL/checkpoint/context/sub-agent/tracing 打包成 harness → 你的 Phase 5/6 蓝本</div>
+        </div>
+        <div style="flex:1 1 22%;min-width:190px;border:1px solid #e6e9f2;border-radius:8px;padding:10px 12px;background:#fafbff;">
+          <div style="font-size:13px;font-weight:700;">agents-towards-production · 21k★</div>
+          <div style="font-size:12px;color:#556;">原型→生产：observability / HITL / eval / 部署</div>
+        </div>
+        <div style="flex:1 1 22%;min-width:190px;border:1px solid #e6e9f2;border-radius:8px;padding:10px 12px;background:#fafbff;">
+          <div style="font-size:13px;font-weight:700;">Yuxi · 7k★</div>
+          <div style="font-size:12px;color:#556;">自托管多租户平台：RAG+多智能体+MCP+沙盒/权限 → 企业级成品方向</div>
+        </div>
+        <div style="flex:1 1 22%;min-width:190px;border:1px solid #e6e9f2;border-radius:8px;padding:10px 12px;background:#fafbff;">
+          <div style="font-size:13px;font-weight:700;">langgraph · 42k★</div>
+          <div style="font-size:12px;color:#556;">已选对的运行时底座</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #e6e9f2;border-radius:8px;padding:16px 18px;">
+      <div style="font-weight:700;margin-bottom:10px;">建议路线：从「企内系统」改造成「可公开的受限自治安全分析 agent 框架」</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1 1 30%;min-width:220px;border-radius:8px;padding:12px 14px;background:#eef6ee;border:1px solid #cfe6cf;">
+          <div style="font-size:13px;font-weight:700;color:#2e7d32;">P0 · 过了即可展示</div>
+          <div style="font-size:12px;color:#3a6b3a;margin-top:4px;">清 .env · git init · 测试 mock + fake 后端（&lt;分钟级）· README/架构图/演示截图</div>
+        </div>
+        <div style="flex:1 1 30%;min-width:220px;border-radius:8px;padding:12px 14px;background:#f2f6fd;border:1px solid #d4e0f5;">
+          <div style="font-size:13px;font-weight:700;color:#2456a8;">P1 · 对标补亮点</div>
+          <div style="font-size:12px;color:#33507f;margin-top:4px;">租户隔离 / auth·RBAC / 审计 / 异步入口 / 跨模型评测（deepagents·Yuxi 方向）</div>
+        </div>
+        <div style="flex:1 1 30%;min-width:220px;border-radius:8px;padding:12px 14px;background:#f7f4fb;border:1px solid #e4d9f2;">
+          <div style="font-size:13px;font-weight:700;color:#6a3fb0;">P2 · 打磨</div>
+          <div style="font-size:12px;color:#5a4a7a;margin-top:4px;">Feishu 富卡片 · Grafana 图表 · 用 3 条真实事故做公开 Demo</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

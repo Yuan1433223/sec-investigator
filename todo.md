@@ -1,0 +1,113 @@
+# kks-next TODO
+
+> 定位更新（2026-09-23）：从"企业内网安全系统"改为**个人可展示作品**——
+> 目标：独立可运行、公开安全（无企内凭据/标识）、工程整洁、有版本演进叙事。
+
+---
+
+## 里程碑：作品集化改造（做完即可展示）
+
+### M1 命名清理：去掉 `kks_` 前缀
+- [ ] `git init`（当前非仓库，先建版本库，改名作为一次干净 commit）
+- [ ] 目录改名：`kks_runtime → runtime` / `kks_security → security` / `kks_surfaces → surfaces`
+      【待确认：裸名，还是保留中性前缀】
+- [ ] 更新引用：~317 处 py（82 文件）+ ~185 处 toml/md/env（15 文件）
+- [ ] pyproject：project name / console script `kks-serve` / wheel packages
+- [ ] settings.sqlite_path + db 文件 `kks_dev.db` + LangSmith project 名
+- [ ] 品牌清洗：移除 `kk` / `快快网络` / `kk30.net` 等公司标识
+- [ ] 验证：全量测试通过
+
+### M2 空目录处置（仅 `__init__.py` 的包）
+- [ ] 删除：`executor`、`sessions`（职责已被现有代码覆盖）
+- [ ] `resources`：改为放置 fake 数据 fixture / 提示词资源（见 M4）
+- [ ] `reports`：删除 或 补成独立 report 领域服务【待确认，依目标架构】
+- [ ] 核对是否存在其他死引用/未完成脚手架
+
+### M3 文档瘦身 + 根架构图
+- [ ] 合并 `AGENTS.md` + `CLAUDE.md` → 单一 AGENTS.md
+- [ ] 合并 `REVIEW.md` + `REVIEW2.md` → 一份当前状态评审
+- [ ] `WHY_I_DO.md` → 并入架构文档
+- [ ] `context.md` → 提取 3 条真实事故为 `docs/incidents.md`，删 Q&A 噪声
+- [ ] `docs/done/*` 归档或删除
+- [ ] `docs/origin_data/*` 保留为参考，但脱敏企内接口细节
+- [ ] 新增根 `README.md` + 高质量系统架构图（SVG）
+- [ ] 清理 `.pytest_cache/README.md` 等杂项
+
+### M4 数据源 fake 化（接上一轮讨论）
+- [ ] 新增 `DATA_SOURCE=fake` 源选择，adapter 层加 fake 后端（复用 respx / fixture）
+- [ ] 从 `context.md` 3 条真实事故反推造 fixture（ES/Prom/安全状态）
+- [ ] 测试：mock 资产解析 Collector，全套件压回分钟级
+- [ ] `.env` 清理：移除真实端点/凭据，示例化
+
+---
+
+## Current status（2026-04-30，保留）
+
+三层架构已稳定：`kks_runtime` / `kks_security` / `kks_surfaces`；
+`asset_resolution` 为图入口；supervisor 能力驱动路由；machine/security worker 经 `Send` 资产级扇出 + rollup；`reporter` 产出含 findings / asset_findings / 结构化 report 的 artifact；HITL 门在主路径。
+
+```text
+START → asset_resolution → supervisor
+   ├─→ log_detective
+   ├─→ dispatch_machine_checks → Send(machine_check per asset) → machine_rollup
+   ├─→ dispatch_security_checks → Send(security_guard per asset) → security_rollup
+   ├─→ approval_gate
+   └─→ reporter → END
+```
+
+## Tool asset inventory
+
+| Factory / module | Tools | Bound to worker |
+|---|---|---|
+| `es_tools._make_es_tools()` | `query_es_raw_logs`, `query_es_unique_count`, `query_es_top_n`, `query_es_qps_trend`, `query_es_status_code_trend`, `query_es_top_n_trend`, `query_request_count`, `query_status_code_distribution`, `query_es_trend_comparison`, `query_customer_business_desc` (10) | `log_detective` |
+| `prom_tools._make_prom_tools()` | `query_instance_uname`, `query_instance_cpu`, `query_instance_memory`, `query_instance_tcp`, `query_instance_bandwidth`, `query_instance_status`, `query_instance_disk`, `query_instance_socket` (8) | `machine_check` |
+| `security_tools._make_security_tools()` | `check_cc_status`, `check_ddos_status`, `check_host_status`, `query_nodes_ip_by_ip`, `query_nodes_ip_by_domain`, `query_domain_protection_policy` (6) | `security_guard` |
+| `public_tools` | `current_time`, `check_connection_status`, `get_gf_log_table_structure`, `get_waf_log_table_structure` (4) | `log_detective` + `security_guard` |
+| `rag_tools._make_rag_tools()` | `search_knowledge` (1) | `log_detective` |
+
+## Remaining work after demo closure
+
+### A. Log model decision
+- [ ] `log_detective` 保持 target/service scoped，还是设计 asset/log 绑定模型
+
+### B. Error normalization
+- [ ] `ErrorEvent` 作为通用失败契约，包装 worker/reporter 归一化错误发射
+- [ ] 单 worker 失败时保留降级报告生成
+
+### C. Sync RAG isolation
+- [ ] `rag/engine.py` 的 Milvus 查询包进 `anyio.to_thread.run_sync`
+
+### D. In-session tool-call cache
+- [ ] ES tool factory 加 per-investigation 缓存，减少重复查询
+
+### E. Alert time-window alignment
+- [ ] alert end offset 可配置，ES 对比窗口与之一致
+
+### Phase 5 hardening
+- [ ] Auth 扩展点（FastAPI 中间件钩子）
+- [ ] Rate-limiting 中间件钩子
+- [ ] 租户隔离：session_id 按 tenant namespaced
+
+### Phase 6 evals
+- [ ] 对真实 ES + Prometheus 的集成 smoke test
+- [ ] 用真实 report writer 模型对录制的告警做 report quality eval
+- [ ] 跨模型 eval：fast_classifier / tool_reasoner / structured_extractor / report_writer
+
+### Phase 7 switchover
+- [ ] 解决告警时间窗策略
+- [ ] 旧 KKS 旁跑一条 live shadow stream
+- [ ] 真实告警上对比 findings/report 输出
+- [ ] 将一个生产面迁到 kks-next
+- [ ] parity 证明后退役旧 KKS
+
+### P2 deferred
+- [ ] Feishu 富卡片模板
+- [ ] Feishu 多维表格持久化
+- [ ] Grafana 图表渲染 + Feishu 图片上传
+- [ ] 强化 `InvestigationArtifact.report` 为稳定 surface/UI 契约
+- [ ] 仅在事故证据证明需要时增加延迟 ES 工具
+
+## 短指令
+
+保持运行时图全局且显式。
+业务增长应新增资产类型、证据模型、工具、worker 子图，而不触发又一次架构重构。
