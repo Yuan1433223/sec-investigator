@@ -9,13 +9,12 @@
 
 ### M1 命名清理：去掉 `kks_` 前缀
 - [x] `git init`（已建版本库，改名作为一次干净 commit）
-- [ ] 目录改名：`runtime → runtime` / `security → security` / `surfaces → surfaces`
-      【待确认：裸名，还是保留中性前缀】
+- [x] 目录改名：`kks_runtime → runtime` / `kks_security → security` / `kks_surfaces → surfaces`（拍板裸名）
 - [x] 更新引用：~317 处 py（82 文件）+ ~185 处 toml/md/env（15 文件）
-- [ ] pyproject：project name / console script `sec-investigator` / wheel packages
-- [ ] settings.sqlite_path + db 文件 `sec_investigator.db` + LangSmith project 名
+- [x] pyproject：project name / console script `sec-investigator` / wheel packages
+- [x] settings.sqlite_path + db 文件 `sec_investigator.db` + LangSmith project 名
 - [x] 品牌清洗：代码/.env/文档已移除公司标识（保留对捐赠 legacy 的 `KKS` 指代）
-- [x] 验证：全量测试通过（485 passed / ~6s）
+- [x] 验证：全量测试通过（495 passed / ~6s）
 
 ### M2 空目录处置（仅 `__init__.py` 的包）
 - [x] 删除：`executor`、`sessions`（职责已被现有代码覆盖）
@@ -40,6 +39,21 @@
 - [x] `.env`/`.env.example`：`DATA_SOURCE=fake`、占位 base URL、脱敏
 - [x] 离线 demo：`examples/run_demo.py`（三条事故目标可选）
 - [x] replay 测试更新：域名解析成功→预注入 machine 金标准（节点健康/过载）
+
+### M5 LLM 兼容修复（智谱 GLM 接入）
+- [x] `.env` 接智谱 OpenAI 兼容端点 `https://open.bigmodel.cn/api/paas/v4`，模型 `glm-4.5-air`
+- [x] 修复 `with_structured_output`：显式 `method="function_calling"`（supervisor / log_detective /
+      reporter / machine_check / security_guard 共 5 处）——智谱等 OpenAI 兼容中继不识别 strict
+      json_schema，默认会返回纯文本导致结构化解析失败
+- [x] 验证：495 全绿；`examples/run_demo.py` 用智谱跑通整条链（含审批自动批准）
+
+### M6 Web 前端（demo 可视化，Vite + React + TS）
+- [x] `web/` 单页前端：阶段轨 + SSE 执行时间线 + 分项发现 + 最终报告 + 人工审批弹窗
+      （纸墨风去 AI 味 / 中文 / 无 emoji）
+- [x] 后端新增 `POST /investigation/resume`（`Command(resume=...)` 恢复被 interrupt 的审批会话）
+- [x] FastAPI 静态托管 `web/dist`（SPA 回退）；dev 用 Vite proxy
+- [x] 构建通过 + 静态服务 / stream / approval_request 实链验证（final 渲染待模型恢复后复核）
+
 
 ---
 
