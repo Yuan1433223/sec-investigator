@@ -196,6 +196,13 @@ async def test_make_traced_tools_handles_multiple_tools(monkeypatch):
         ("some data", False),
         ({"key": "value"}, False),
         (0, False),  # integers are not empty (not a special type)
+        # no-data / error markers — count toward early-stop budget
+        ({"status": "no_data", "points": []}, True),
+        ({"status": "ok", "points": []}, True),
+        ({"success": False}, True),
+        ({"error": "非法时间戳"}, True),
+        ({"status": "ok", "points": [1]}, False),
+        ({"events": []}, True),
     ],
 )
 def test_is_empty_result(value, expected):

@@ -60,19 +60,34 @@ def _is_empty_collection(value: Any) -> bool | None:
     return None
 
 
+# Data-bearing keys checked for emptiness in dict results. A "no_data" style
+# dict (e.g. {"status": "no_data", "points": []}) carries no actionable data,
+# so it should count toward the early-stop budget, otherwise a flaky model can
+# loop on such results until the recursion limit.
+_DATA_KEYS = ("hits", "total", "count", "items", "results", "data", "points", "events", "nodes")
+_NO_DATA_STATUS = {"no_data", "not_applicable", "unknown", "no data", "failed", "error", "empty"}
+
+
 def _is_empty_result(result: Any) -> bool:
     """Return True when a tool result contains no actionable data."""
     if result is None:
         return True
     if isinstance(result, dict):
-        hits = result.get("hits", result.get("total", result.get("count", None)))
-        if hits is not None:
-            empty = _is_empty_collection(hits)
-            if empty is not None:
-                return empty
-        items = result.get("items", result.get("results", result.get("data", None)))
-        if items is not None:
-            return len(items) == 0
+        # explicit error / no-data / failed markers
+        err = result.get("error")
+        if isinstance(err, str) and err.strip():
+            return True
+        status = result.get("status")
+        if isinstance(status, str) and status.strip().lower() in _NO_DATA_STATUS:
+            return True
+        if result.get("success") is False:
+            return True
+        # any data-bearing key that is empty ⇒ whole result is empty
+        for key in _DATA_KEYS:
+            if key in result:
+                empty = _is_empty_collection(result[key])
+                if empty is not None:
+                    return empty
         return not any(result.values())
     if isinstance(result, (list, tuple)):
         return len(result) == 0
