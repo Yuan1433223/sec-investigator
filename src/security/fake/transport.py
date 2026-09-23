@@ -128,8 +128,13 @@ def _bucket_seconds(interval: str) -> int:
     return _INTERVAL_SECONDS.get(interval, 60)
 
 
-def _parse_dt(s: str) -> datetime:
-    return datetime.strptime(s, _ES_TIME_FORMAT)
+def _parse_dt(s: str) -> datetime | None:
+    """Parse a fake-ES timestamp; return None on garbage so callers degrade
+    gracefully instead of crashing the investigation on a bad range time."""
+    try:
+        return datetime.strptime(s, _ES_TIME_FORMAT)
+    except (ValueError, TypeError):
+        return None
 
 
 def _minute_of_day(hhmm: str) -> int:
@@ -148,6 +153,8 @@ def _trend_counts(
     step = _bucket_seconds(interval)
     cur = _parse_dt(start)
     stop = _parse_dt(end)
+    if cur is None or stop is None:
+        return []
     spike_mod = _minute_of_day(profile.spike_time) if profile.spike_time else None
 
     # share of the queried status class within total traffic
@@ -181,6 +188,8 @@ def _total_docs(profile: IncidentProfile, start: str, end: str) -> int:
     total = 0
     cur = _parse_dt(start)
     stop = _parse_dt(end)
+    if cur is None or stop is None:
+        return []
     spike_mod = _minute_of_day(profile.spike_time) if profile.spike_time else None
     while cur <= stop:
         mod = cur.hour * 60 + cur.minute

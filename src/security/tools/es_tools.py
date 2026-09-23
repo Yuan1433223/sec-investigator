@@ -65,6 +65,22 @@ def _total_hits(response: dict[str, Any]) -> int:
     return int(hits)
 
 
+def _parse_time(value: str | None, label: str) -> datetime:
+    """
+    Strict timestamp parse for tool arguments. Raises ValueError with a clear
+    message when the value is missing or not a valid 'YYYY-MM-DD HH:MM:SS'
+    (or ISO 8601) timestamp, so a caller can return {"error": ...} instead of
+    letting a raw ValueError kill the whole investigation.
+    """
+    if not value:
+        raise ValueError(f"{label} 缺失（期望 YYYY-MM-DD HH:MM:SS）")
+    norm = _normalise_time(value)
+    try:
+        return datetime.strptime(norm, "%Y-%m-%d %H:%M:%S")
+    except ValueError as exc:
+        raise ValueError(f"{label} 非法时间戳 {value!r}（期望 YYYY-MM-DD HH:MM:SS）") from exc
+
+
 def _make_es_tools(adapter: ESAdapter | None = None):
     """
     Factory that returns a list of ES tools bound to the given adapter.
@@ -316,6 +332,11 @@ def _make_es_tools(adapter: ESAdapter | None = None):
         else:
             filter_clause = {"term": {field: value}}
 
+        try:
+            _parse_time(start_time, "start_time")
+            _parse_time(end_time, "end_time")
+        except ValueError as _exc:
+            return {"error": str(_exc)}
         start_time = _normalise_time(start_time)
         end_time = _normalise_time(end_time)
         compare_start = (
@@ -416,33 +437,34 @@ def _make_es_tools(adapter: ESAdapter | None = None):
         if not metrics:
             return {"error": "metrics must not be empty"}
 
-        # Normalise times before parsing — LLM may pass ISO 8601 with timezone
-        current_start_time = _normalise_time(current_start_time)
-        current_end_time = _normalise_time(current_end_time)
-
-        # Resolve comparison window
-        cur_start = datetime.strptime(current_start_time, "%Y-%m-%d %H:%M:%S")
-        cur_end = datetime.strptime(current_end_time, "%Y-%m-%d %H:%M:%S")
-        if comparison_mode == "current_vs_yesterday":
-            delta = timedelta(days=1)
-            cmp_start = cur_start - delta
-            cmp_end = cur_end - delta
-        elif comparison_mode == "current_vs_last_week":
-            delta = timedelta(days=7)
-            cmp_start = cur_start - delta
-            cmp_end = cur_end - delta
-        elif comparison_mode == "period_vs_period":
-            if not compare_start_time or not compare_end_time:
-                return {
-                    "error": (
-                        "period_vs_period requires compare_start_time"
-                        " and compare_end_time"
-                    )
-                }
-            cmp_start = datetime.strptime(_normalise_time(compare_start_time), "%Y-%m-%d %H:%M:%S")
-            cmp_end = datetime.strptime(_normalise_time(compare_end_time), "%Y-%m-%d %H:%M:%S")
-        else:
-            return {"error": f"unsupported comparison_mode: {comparison_mode}"}
+        # Normalise times before parsing — LLM may pass ISO 8601 with timezone.
+        # A malformed timestamp returns {"error": ...} so the LLM can retry,
+        # instead of a raw ValueError killing the whole investigation.
+        try:
+            cur_start = _parse_time(current_start_time, "current_start_time")
+            cur_end = _parse_time(current_end_time, "current_end_time")
+            if comparison_mode == "current_vs_yesterday":
+                delta = timedelta(days=1)
+                cmp_start = cur_start - delta
+                cmp_end = cur_end - delta
+            elif comparison_mode == "current_vs_last_week":
+                delta = timedelta(days=7)
+                cmp_start = cur_start - delta
+                cmp_end = cur_end - delta
+            elif comparison_mode == "period_vs_period":
+                if not compare_start_time or not compare_end_time:
+                    return {
+                        "error": (
+                            "period_vs_period requires compare_start_time"
+                            " and compare_end_time"
+                        )
+                    }
+                cmp_start = _parse_time(compare_start_time, "compare_start_time")
+                cmp_end = _parse_time(compare_end_time, "compare_end_time")
+            else:
+                return {"error": f"unsupported comparison_mode: {comparison_mode}"}
+        except ValueError as _exc:
+            return {"error": str(_exc)}
 
         cmp_start_str = cmp_start.strftime("%Y-%m-%d %H:%M:%S")
         cmp_end_str = cmp_end.strftime("%Y-%m-%d %H:%M:%S")

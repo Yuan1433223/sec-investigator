@@ -26,7 +26,10 @@ from security.adapters.prometheus import PrometheusAdapter, _peak_value
 
 
 def _ts(time_str: str) -> int:
-    return int(datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").timestamp())
+    # Tolerate ISO-8601 / space-separated; raise clear error on garbage so
+    # callers can degrade gracefully instead of a cryptic ValueError.
+    t = time_str.replace("T", " ").split("+")[0].split(".")[0]
+    return int(datetime.strptime(t, "%Y-%m-%d %H:%M:%S").timestamp())
 
 
 def _make_prom_tools(adapter: PrometheusAdapter | None = None):

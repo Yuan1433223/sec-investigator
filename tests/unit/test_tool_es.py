@@ -471,3 +471,29 @@ def test_es_tools_list_includes_new_tools():
     assert "query_status_code_distribution" in names
     assert "query_es_trend_comparison" in names
     assert "query_customer_business_desc" in names
+
+
+async def test_query_es_trend_comparison_garbage_timestamp_returns_error():
+    """A malformed LLM-provided timestamp must return {"error": ...}, not raise
+    a ValueError that kills the whole investigation (issue: '14:资讯06')."""
+    tools = _toolmap(_mock_adapter({}))
+    result = await tools["query_es_trend_comparison"].ainvoke({
+        "metrics": [{"type": "request_count"}],
+        "comparison_mode": "current_vs_yesterday",
+        "current_start_time": "2026-09-23 14:资讯06",
+        "current_end_time": "2026-09-23 14:00:00",
+    })
+    assert "error" in result
+    assert "current_start_time" in result["error"]
+
+
+async def test_query_status_code_distribution_garbage_timestamp_returns_error():
+    tools = _toolmap(_mock_adapter({}))
+    result = await tools["query_status_code_distribution"].ainvoke({
+        "query_by": "domain",
+        "value": "example.com",
+        "start_time": "2026-09-23 14:资讯06",
+        "end_time": "2026-09-23 15:00:00",
+        "source": "GF",
+    })
+    assert "error" in result
