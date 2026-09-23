@@ -37,6 +37,7 @@ async def main() -> None:
 
     from runtime.config.settings import get_settings
     from runtime.events.protocol import (
+        ApprovalRequestEvent,
         ErrorEvent,
         FinalEvent,
         StatusEvent,
@@ -44,6 +45,7 @@ async def main() -> None:
         ToolResultEvent,
     )
     from runtime.graph.investigation import build_investigation_graph
+    from langgraph.types import Command
 
     s = get_settings()
     print(f"data_source = {s.data_source} | target = {target}\n")
@@ -60,26 +62,47 @@ async def main() -> None:
 
     print("=" * 64)
     events: list = []
+    config = {"configurable": {"thread_id": session_id}}
+
+    def _consume(events_list: list) -> None:
+        for ev in events_list:
+            if isinstance(ev, StatusEvent):
+                print(f"[{ev.node}] {ev.message}")
+            elif isinstance(ev, ToolCallEvent):
+                print(f"   ↳ {ev.tool_name}({_brief(ev.tool_input)})")
+            elif isinstance(ev, ToolResultEvent):
+                out = ev.output
+                if isinstance(out, dict):
+                    print(f"   ← {ev.tool_name}: {_brief(out)}")
+            elif isinstance(ev, ErrorEvent):
+                print(f"[error @ {ev.node}] {ev.message}")
+
     async for ev in graph.astream(
         {
             "messages": [HumanMessage(content=question)],
             "target": target,
             "session_id": session_id,
         },
-        config={"configurable": {"thread_id": session_id}},
+        config=config,
         stream_mode="custom",
     ):
         events.append(ev)
-        if isinstance(ev, StatusEvent):
-            print(f"[{ev.node}] {ev.message}")
-        elif isinstance(ev, ToolCallEvent):
-            print(f"   ↳ {ev.tool_name}({_brief(ev.tool_input)})")
-        elif isinstance(ev, ToolResultEvent):
-            out = ev.output
-            if isinstance(out, dict):
-                print(f"   ← {ev.tool_name}: {_brief(out)}")
-        elif isinstance(ev, ErrorEvent):
-            print(f"[error @ {ev.node}] {ev.message}")
+    _consume(events)
+
+    # Critical findings pause the graph at the HITL approval gate. In demo mode
+    # we auto-approve and resume — the production surface would ask a human.
+    saw_approval = any(isinstance(e, ApprovalRequestEvent) for e in events)
+    if not any(isinstance(e, FinalEvent) for e in events) and saw_approval:
+        print("\n[approval] critical finding → 自动批准（demo 模式），继续生成报告...")
+        resume: list = []
+        async for ev in graph.astream(
+            Command(resume={"approved": True, "approver": "demo-auto-approve"}),
+            config=config,
+            stream_mode="custom",
+        ):
+            resume.append(ev)
+        _consume(resume)
+        events += resume
 
     final = next((e for e in events if isinstance(e, FinalEvent)), None)
     if final is None:
