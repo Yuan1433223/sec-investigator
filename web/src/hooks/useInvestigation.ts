@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { resumeInvestigation, startInvestigation } from "../api";
+import { newSessionId, resumeInvestigation, startInvestigation } from "../api";
 import type {
   ApprovalRequestEvent,
   Finding,
@@ -91,7 +91,7 @@ export function useInvestigation() {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
-      const sid = crypto.randomUUID();
+      const sid = newSessionId();
       setSessionId(sid);
       setTarget(t);
       setEntries([]);
