@@ -13,7 +13,7 @@
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `PROMETHEUS_API_KEY` | Prometheus API 地址 | `https://prometheus.dev.kk30.net` |
+| `PROMETHEUS_API_KEY` | Prometheus API 地址 | `https://prometheus.dev.example.net` |
 
 ## 实例格式
 
@@ -42,7 +42,7 @@ node_uname_info{instance="10.0.1.164:64998"}
 **请求示例**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=node_uname_info%7Binstance%3D%2210.0.1.164%3A64998%22%7D
+GET https://prometheus.dev.example.net/api/v1/query?query=node_uname_info%7Binstance%3D%2210.0.1.164%3A64998%22%7D
 ```
 
 **响应示例**:
@@ -111,7 +111,7 @@ GET https://prometheus.dev.kk30.net/api/v1/query?query=node_uname_info%7Binstanc
 **请求示例**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=100%20*%20(1%20-%20avg(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cinstance%3D%2210.0.1.164%3A64998%22%7D%5B5m%5D))%20by%20(instance))
+GET https://prometheus.dev.example.net/api/v1/query?query=100%20*%20(1%20-%20avg(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%2Cinstance%3D%2210.0.1.164%3A64998%22%7D%5B5m%5D))%20by%20(instance))
 ```
 
 **响应示例**:
@@ -154,7 +154,7 @@ GET https://prometheus.dev.kk30.net/api/v1/query?query=100%20*%20(1%20-%20avg(ra
 **请求示例**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=(1%20-%20(node_memory_MemAvailable_bytes%7Binstance%3D%2210.0.1.164%3A64998%22%7D%20%2F%20(node_memory_MemTotal_bytes%7Binstance%3D%2210.0.1.164%3A64998%22%7D)))%20*%20100&start=1699000000&end=1699010000
+GET https://prometheus.dev.example.net/api/v1/query?query=(1%20-%20(node_memory_MemAvailable_bytes%7Binstance%3D%2210.0.1.164%3A64998%22%7D%20%2F%20(node_memory_MemTotal_bytes%7Binstance%3D%2210.0.1.164%3A64998%22%7D)))%20*%20100&start=1699000000&end=1699010000
 ```
 
 **响应示例**:
@@ -203,13 +203,13 @@ irate(node_disk_written_bytes_total{instance="10.0.1.164:64998"}[5m])
 **请求示例（读取）**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=irate(node_disk_read_bytes_total%7Binstance%3D%2210.0.1.164%3A64998%22%7D%5B5m%5D)
+GET https://prometheus.dev.example.net/api/v1/query?query=irate(node_disk_read_bytes_total%7Binstance%3D%2210.0.1.164%3A64998%22%7D%5B5m%5D)
 ```
 
 **请求示例（写入）**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=irate(node_disk_written_bytes_total%7Binstance%3D%2210.0.1.164%3A64998%22%7D%5B5m%5D)
+GET https://prometheus.dev.example.net/api/v1/query?query=irate(node_disk_written_bytes_total%7Binstance%3D%2210.0.1.164%3A64998%22%7D%5B5m%5D)
 ```
 
 **响应示例**:
@@ -273,7 +273,7 @@ node_netstat_Tcp_CurrEstab{instance="10.0.1.164:64998"}
 **请求示例**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=node_netstat_Tcp_CurrEstab%7Binstance%3D%2210.0.1.164%3A64998%22%7D&start=1699000000&end=1699010000
+GET https://prometheus.dev.example.net/api/v1/query?query=node_netstat_Tcp_CurrEstab%7Binstance%3D%2210.0.1.164%3A64998%22%7D&start=1699000000&end=1699010000
 ```
 
 **响应示例**:
@@ -316,7 +316,7 @@ node_sockstat_sockets_used{instance="10.0.1.164:64998"}
 **请求示例**:
 
 ```http
-GET https://prometheus.dev.kk30.net/api/v1/query?query=node_sockstat_sockets_used%7Binstance%3D%2210.0.1.164%3A64998%22%7D&start=1699000000&end=1699010000
+GET https://prometheus.dev.example.net/api/v1/query?query=node_sockstat_sockets_used%7Binstance%3D%2210.0.1.164%3A64998%22%7D&start=1699000000&end=1699010000
 ```
 
 **响应示例**:

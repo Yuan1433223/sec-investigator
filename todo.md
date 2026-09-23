@@ -8,30 +8,30 @@
 ## 里程碑：作品集化改造（做完即可展示）
 
 ### M1 命名清理：去掉 `kks_` 前缀
-- [ ] `git init`（当前非仓库，先建版本库，改名作为一次干净 commit）
+- [x] `git init`（已建版本库，改名作为一次干净 commit）
 - [ ] 目录改名：`runtime → runtime` / `security → security` / `surfaces → surfaces`
       【待确认：裸名，还是保留中性前缀】
-- [ ] 更新引用：~317 处 py（82 文件）+ ~185 处 toml/md/env（15 文件）
+- [x] 更新引用：~317 处 py（82 文件）+ ~185 处 toml/md/env（15 文件）
 - [ ] pyproject：project name / console script `sec-investigator` / wheel packages
 - [ ] settings.sqlite_path + db 文件 `sec_investigator.db` + LangSmith project 名
-- [ ] 品牌清洗：移除 `kk` / `快快网络` / `kk30.net` 等公司标识
-- [ ] 验证：全量测试通过
+- [x] 品牌清洗：代码/.env/文档已移除公司标识（保留对捐赠 legacy 的 `KKS` 指代）
+- [x] 验证：全量测试通过（485 passed / ~6s）
 
 ### M2 空目录处置（仅 `__init__.py` 的包）
-- [ ] 删除：`executor`、`sessions`（职责已被现有代码覆盖）
-- [ ] `resources`：改为放置 fake 数据 fixture / 提示词资源（见 M4）
-- [ ] `reports`：删除 或 补成独立 report 领域服务【待确认，依目标架构】
-- [ ] 核对是否存在其他死引用/未完成脚手架
+- [x] 删除：`executor`、`sessions`（职责已被现有代码覆盖）
+- [x] `resources` 删除；M4 的 fixture 将放 `tests/fixtures/`
+- [x] `reports`：已删除（报告逻辑在 reporter 节点）
+- [x] 核对无其他死引用
 
 ### M3 文档瘦身 + 根架构图
-- [ ] 合并 `AGENTS.md` + `CLAUDE.md` → 单一 AGENTS.md
-- [ ] 合并 `REVIEW.md` + `REVIEW2.md` → 一份当前状态评审
-- [ ] `WHY_I_DO.md` → 并入架构文档
-- [ ] `context.md` → 提取 3 条真实事故为 `docs/incidents.md`，删 Q&A 噪声
-- [ ] `docs/done/*` 归档或删除
-- [ ] `docs/origin_data/*` 保留为参考，但脱敏企内接口细节
-- [ ] 新增根 `README.md` + 高质量系统架构图（SVG）
-- [ ] 清理 `.pytest_cache/README.md` 等杂项
+- [x] 合并 `AGENTS.md` + `CLAUDE.md` → 单一 AGENTS.md
+- [x] 合并 `REVIEW.md` + `REVIEW2.md` → 单一 REVIEW.md
+- [x] `WHY_I_DO.md` 内容已并入架构文档（agent_runtime_position.md）
+- [x] `context.md` → 提取 3 条真实事故为 `docs/incidents.md`，删除 Q&A 噪声
+- [x] `docs/done/*` 已删除
+- [x] `docs/origin_data/*` 保留为参考，已脱敏企内主机/标识
+- [x] 新增根 `README.md` + `docs/architecture.svg` 系统架构图
+- [x] 清理杂项（pytest_cache 已 ignore；空目录已删）
 
 ### M4 数据源 fake 化（接上一轮讨论）
 - [ ] 新增 `DATA_SOURCE=fake` 源选择，adapter 层加 fake 后端（复用 respx / fixture）

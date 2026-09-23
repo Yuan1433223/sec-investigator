@@ -97,15 +97,15 @@ ENVIRONMENT=dev  # 影响 .keyword 后缀
 ### Prometheus
 
 ```bash
-PROMETHEUS_API_KEY=https://prometheus.dev.kk30.net
+PROMETHEUS_API_KEY=https://prometheus.dev.example.net
 ```
 
 ### CC/DDoS 防护
 
 ```bash
-CC_API_URL=https://yunfang.dev.kk30.net
+CC_API_URL=https://yunfang.dev.example.net
 CC_API_KEY=xxx
-DDOS_API_URL=http://yunfang.dev.kk30.net
+DDOS_API_URL=http://yunfang.dev.example.net
 DDOS_API_KEY=xxx
 DDOS_TOKEN=eyJ0eXAi...
 ```
@@ -122,13 +122,13 @@ FEISHU_TABLE_APP_TOKEN=xxx
 ### WAF/高防产品
 
 ```bash
-WAF_API_URL=https://kk_waf_admin.dev.kk30.net
+WAF_API_URL=https://waf_admin.dev.example.net
 WAF_API_TOKEN=xxx
-GF_YXD_API_URL=http://kk_yxd_admin.dev.kk30.net
+GF_YXD_API_URL=http://yxd_admin.dev.example.net
 GF_YXD_API_XTOKEN=xxx
-GF_CDN_API_URL=http://kk_cdn_admin.dev.kk30.net
+GF_CDN_API_URL=http://cdn_admin.dev.example.net
 GF_CDN_API_XTOKEN=xxx
-GF_DDOS_API_URL=http://kk_ddos_admin.dev.kk30.net
+GF_DDOS_API_URL=http://ddos_admin.dev.example.net
 GF_DDOS_API_XTOKEN=xxx
 ```
 

@@ -25,7 +25,7 @@
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `WAF_API_URL` | WAF 管理 API 地址 | `https://kk_waf_admin.dev.kk30.net` |
+| `WAF_API_URL` | WAF 管理 API 地址 | `https://waf_admin.dev.example.net` |
 | `WAF_API_TOKEN` | WAF API 访问 Token | `xxx` |
 | `ENVIRONMENT` | 运行环境 | `dev` / `prod` |
 
@@ -50,7 +50,7 @@ X-Access-Token: {WAF_API_TOKEN}
 **请求示例**:
 
 ```http
-GET https://kk_waf_admin.dev.kk30.net/api/security_assistant/get_node_ips?domain=example.com&time_stamp=1699012345
+GET https://waf_admin.dev.example.net/api/security_assistant/get_node_ips?domain=example.com&time_stamp=1699012345
 X-Access-Token: xxx
 ```
 
@@ -173,21 +173,21 @@ x-token: {product_token}
 **请求示例（游戏盾）**:
 
 ```http
-GET http://kk_yxd_admin.dev.kk30.net/api/p_domainRule/getNodeIpList?domains=example.com
+GET http://yxd_admin.dev.example.net/api/p_domainRule/getNodeIpList?domains=example.com
 x-token: xxx
 ```
 
 **请求示例（高防 IP）**:
 
 ```http
-GET http://kk_cdn_admin.dev.kk30.net/api/p_domainRule/getNodeIpList?domains=example.com
+GET http://cdn_admin.dev.example.net/api/p_domainRule/getNodeIpList?domains=example.com
 x-token: xxx
 ```
 
 **请求示例（DDoS 高防）**:
 
 ```http
-GET http://kk_ddos_admin.dev.kk30.net/api/p_domainRule/getNodeIpList?domains=example.com
+GET http://ddos_admin.dev.example.net/api/p_domainRule/getNodeIpList?domains=example.com
 x-token: xxx
 ```
 

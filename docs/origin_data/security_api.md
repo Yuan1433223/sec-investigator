@@ -17,7 +17,7 @@
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `CC_API_URL` | CC 防护 API 地址 | `https://yunfang.dev.kk30.net` |
+| `CC_API_URL` | CC 防护 API 地址 | `https://yunfang.dev.example.net` |
 | `CC_API_KEY` | CC 防护 API 密钥 | `xxx` |
 
 ---
@@ -35,7 +35,7 @@
 **请求示例**:
 
 ```http
-GET https://yunfang.dev.kk30.net/api/host/host_point_list?key=xxx&ips=10.0.1.163,10.0.1.164
+GET https://yunfang.dev.example.net/api/host/host_point_list?key=xxx&ips=10.0.1.163,10.0.1.164
 ```
 
 **请求参数**:
@@ -100,7 +100,7 @@ input_pps > 2000 and (input_pps - input_submit_pps) >= 1000
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `DDOS_API_URL` | DDoS 防护 API 地址 | `http://yunfang.dev.kk30.net` |
+| `DDOS_API_URL` | DDoS 防护 API 地址 | `http://yunfang.dev.example.net` |
 | `DDOS_API_KEY` | DDoS 防护 API 密钥 | `xxx` |
 | `DDOS_TOKEN` | DDoS 认证 Token | `eyJ0eXAi...` |
 
@@ -126,7 +126,7 @@ Content-Type: application/json
 **请求示例**:
 
 ```http
-GET http://yunfang.dev.kk30.net/api/ddos/list?ip=10.0.1.167,10.0.1.168&key=xxx&time_start=2025-11-03%2014:00:00&time_end=2025-11-03%2018:00:00&sort=-time
+GET http://yunfang.dev.example.net/api/ddos/list?ip=10.0.1.167,10.0.1.168&key=xxx&time_start=2025-11-03%2014:00:00&time_end=2025-11-03%2018:00:00&sort=-time
 ```
 
 **请求参数**:
