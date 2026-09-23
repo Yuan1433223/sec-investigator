@@ -54,12 +54,21 @@ async def reporter_node(state: SessionState) -> dict:
     )
 
     llm = build_model(_PLAYBOOK.model_profile)
-    report: InvestigationReport = await llm.with_structured_output(InvestigationReport, method="function_calling").ainvoke(
+    report: InvestigationReport | None = await llm.with_structured_output(
+        InvestigationReport, method="function_calling"
+    ).ainvoke(
         [
             SystemMessage(content=_PLAYBOOK.system_prompt),
             HumanMessage(content=user_message),
         ]
     )
+
+    if report is None or not isinstance(report, InvestigationReport):
+        # Model failed to produce a structured report (None / wrong type) →
+        # degrade to a deterministic Chinese report so the investigation still
+        # completes instead of crashing on .alert_status.
+        write(StatusEvent(node="reporter", message="Report extraction failed; emitting degraded report"))
+        report = _degraded_report(target, findings)
 
     # Map structured report → InvestigationArtifact (runtime-layer type)
     risk_level = _derive_risk_level(report)
@@ -89,6 +98,30 @@ def _derive_risk_level(report: InvestigationReport) -> str:
     """Map alert_status to InvestigationArtifact risk_level vocabulary."""
     mapping = {"normal": "low", "warning": "medium", "critical": "high"}
     return mapping.get(report.alert_status or "warning", "medium")
+
+
+def _degraded_report(target: str, findings: dict) -> InvestigationReport:
+    """Deterministic fallback report when structured extraction returns None.
+
+    All InvestigationReport fields carry safe defaults; we override the
+    user-facing strings to signal that automatic report generation failed and
+    needs human review. alert_status stays "warning" (neutral review-needed),
+    never fabricated from partial data.
+    """
+    n = len(findings) or 1
+    return InvestigationReport(
+        alert_status="warning",
+        summary=f"报告生成失败：模型未返回结构化报告，已基于 {n} 个维度的现有发现给出降级结论，请人工复核。",
+        recommendations=(
+            "1. 重新生成一次报告，或更换更稳定的模型档位。\n"
+            "2. 若仍失败，请依据上方分项发现人工整理调查结论。"
+        ),
+        performance_conclusion="基础设施维度数据未能完整综合，结论待人工核实。",
+        network_conclusion="网络维度数据未能完整综合，结论待人工核实。",
+        security_conclusion="安全防护维度数据未能完整综合，结论待人工核实。",
+        request_conclusion="日志维度数据未能完整综合，结论待人工核实。",
+        root_cause="报告模型未返回结构化结果，无法自动完成根因综合。",
+    )
 
 
 def _format_findings(findings: dict) -> str:

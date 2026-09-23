@@ -6,12 +6,18 @@ without invoking the LLM. Imports the private helpers directly.
 """
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from runtime.artifacts.investigation import InvestigationArtifact
 from runtime.graph.nodes.reporter import (
+    _degraded_report,
     _derive_risk_level,
     _format_asset_findings,
     _format_findings,
     _parse_recommendations,
+    reporter_node,
 )
 from security.schemas.report import InvestigationReport
 
@@ -178,3 +184,73 @@ def test_artifact_serialises_to_json():
     assert d["risk_level"] == "low"
     assert d["report"]["summary"] == "All clear."
     assert isinstance(d["created_at"], str)  # datetime serialised to ISO string
+
+# ---------------------------------------------------------------------------
+# reporter_node graceful degradation on failed structured extraction
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reporter_node_degrades_when_report_is_none():
+    """Structured extraction returning None must not crash the investigation."""
+    mock_model = MagicMock()
+    mock_model.with_structured_output.return_value = MagicMock(
+        ainvoke=AsyncMock(return_value=None)
+    )
+
+    events: list = []
+    fake_writer = lambda ev: events.append(ev)  # noqa: E731
+
+    with (
+        patch("runtime.graph.nodes.reporter.get_stream_writer", return_value=fake_writer),
+        patch("runtime.graph.nodes.reporter.build_model", return_value=mock_model),
+    ):
+        result = await reporter_node(
+            {
+                "target": "example.com",
+                "session_id": "s1",
+                "findings": {"logs": {"risk_level": "high"}},
+                "asset_findings": {},
+            }
+        )
+
+    artifact = result["artifacts"][0]
+    assert result["status"] == "completed"
+    assert artifact["risk_level"] == "medium"  # degraded warning -> medium
+    assert "报告生成失败" in artifact["summary"]
+    assert artifact["report"]["alert_status"] == "warning"
+    # degradation emitted a status event
+    assert any(getattr(ev, "message", "").startswith("Report extraction failed") for ev in events)
+
+
+@pytest.mark.asyncio
+async def test_reporter_node_degrades_when_report_wrong_type():
+    """A raw dict (non-conforming extraction) must also degrade, not crash."""
+    mock_model = MagicMock()
+    mock_model.with_structured_output.return_value = MagicMock(
+        ainvoke=AsyncMock(return_value={"summary": "not a pydantic model"})
+    )
+
+    with (
+        patch("runtime.graph.nodes.reporter.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.reporter.build_model", return_value=mock_model),
+    ):
+        result = await reporter_node(
+            {
+                "target": "example.com",
+                "session_id": "s1",
+                "findings": {},
+                "asset_findings": {},
+            }
+        )
+
+    assert result["status"] == "completed"
+    assert result["artifacts"][0]["report"]["alert_status"] == "warning"
+
+
+def test_degraded_report_is_valid_and_chinese():
+    report = _degraded_report("example.com", {"logs": {}})
+    assert report.alert_status == "warning"
+    assert "报告生成失败" in report.summary
+    assert report.root_cause
+
