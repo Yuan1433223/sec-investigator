@@ -32,6 +32,7 @@ export function useInvestigation() {
 
   const seq = useRef(0);
   const waitingRef = useRef(false);
+  const decidingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const addEntry = useCallback(
@@ -119,9 +120,12 @@ export function useInvestigation() {
 
   const decide = useCallback(
     async (approved: boolean) => {
-      if (!approvalReq) return;
+      if (!approvalReq || decidingRef.current) return;
+      decidingRef.current = true;
       const decision = approved ? "审批通过，继续生成报告" : "审批拒绝，终止调查";
       addEntry({ kind: "status", node: "approval_gate", message: decision });
+      // 立即关闭审批弹窗，进入"调查中"；resume 流随后驱动剩余事件
+      setApprovalReq(null);
       waitingRef.current = false;
       setPhase("running");
       try {
@@ -132,6 +136,8 @@ export function useInvestigation() {
       } catch (err) {
         setError((err as Error).message);
         setPhase("error");
+      } finally {
+        decidingRef.current = false;
       }
     },
     [addEntry, approvalReq, handleEvent, sessionId],
