@@ -14,8 +14,12 @@ export interface Finding {
   /** 关键证据/要点 */
   details?: string[];
   evidence?: Record<string, unknown> | unknown;
+  /** 其余字段透传（如 qps_info / cc_status / system_metrics 等维度专属字段） */
   [key: string]: unknown;
 }
+
+/** 后端 findings 是按维度的字典：{ logs: {...}, machine: {...}, security: {...} } */
+export type FindingsMap = Record<string, Finding>;
 
 export interface StatusEvent {
   type: "status";
@@ -59,7 +63,7 @@ export interface InvestigationArtifact {
 
 export interface FinalEvent {
   type: "final";
-  findings: Finding[];
+  findings: FindingsMap;
   artifacts: InvestigationArtifact[];
 }
 
@@ -72,7 +76,7 @@ export interface ErrorEvent {
 export interface ApprovalRequestEvent {
   type: "approval_request";
   session_id: string;
-  findings: Finding[];
+  findings: FindingsMap;
 }
 
 export interface ApprovalDecisionEvent {

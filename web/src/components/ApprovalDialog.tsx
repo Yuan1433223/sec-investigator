@@ -6,7 +6,8 @@ interface Props {
 }
 
 export function ApprovalDialog({ request, onDecide }: Props) {
-  const highRisk = request.findings.some(
+  const findings = Object.values(request.findings);
+  const highRisk = findings.some(
     (f) => f.risk_level === "critical" || f.risk_level === "high",
   );
 
@@ -22,8 +23,8 @@ export function ApprovalDialog({ request, onDecide }: Props) {
             调查发现疑似高危事件，已暂停在审批门。请确认是否继续生成最终报告。
           </p>
           <div className="modal-summary">
-            {request.findings.map((f, i) => (
-              <div key={i} style={{ marginBottom: i < request.findings.length - 1 ? 6 : 0 }}>
+            {findings.map((f, i) => (
+              <div key={i} style={{ marginBottom: i < findings.length - 1 ? 6 : 0 }}>
                 <strong>{f.dimension ?? f.node_name ?? "发现"}</strong>
                 {" · 风险 "}
                 <em>{f.risk_level ?? "low"}</em>

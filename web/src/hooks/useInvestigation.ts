@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { newSessionId, resumeInvestigation, startInvestigation } from "../api";
 import type {
   ApprovalRequestEvent,
-  Finding,
+  FindingsMap,
   FinalEvent,
   RuntimeEvent,
 } from "../types";
@@ -26,7 +26,7 @@ export function useInvestigation() {
   const [approvalReq, setApprovalReq] = useState<ApprovalRequestEvent | null>(
     null,
   );
-  const [findings, setFindings] = useState<Finding[]>([]);
+  const [findings, setFindings] = useState<FindingsMap>({});
   const [finalReport, setFinalReport] = useState<FinalEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,7 +96,7 @@ export function useInvestigation() {
       setTarget(t);
       setEntries([]);
       setApprovalReq(null);
-      setFindings([]);
+      setFindings({});
       setFinalReport(null);
       setError(null);
       waitingRef.current = false;
