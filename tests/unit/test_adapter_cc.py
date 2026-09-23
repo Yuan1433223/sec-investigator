@@ -8,7 +8,7 @@ from __future__ import annotations
 import respx
 from httpx import Response, TimeoutException
 
-from kks_security.adapters.cc import CCAdapter, PointStatus
+from security.adapters.cc import CCAdapter, PointStatus
 
 _BASE = "http://fake-cc"
 

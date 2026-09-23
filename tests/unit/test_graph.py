@@ -16,9 +16,9 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from kks_runtime.events.protocol import ArtifactEvent, FinalEvent, StatusEvent
-from kks_runtime.graph.investigation import build_investigation_graph
-from kks_security.schemas.report import InvestigationReport
+from runtime.events.protocol import ArtifactEvent, FinalEvent, StatusEvent
+from runtime.graph.investigation import build_investigation_graph
+from security.schemas.report import InvestigationReport
 
 # Pre-populated findings that satisfy all required_findings for IP targets
 _ALL_FINDINGS = {"logs": {}, "machine": {}, "security": {}}
@@ -68,8 +68,8 @@ def test_graph_nodes_exist(graph):
 @pytest.mark.asyncio
 async def test_graph_ainvoke_completes(graph):
     """Graph completes with status=completed when all findings are pre-populated."""
-    _supervisor = "kks_runtime.graph.nodes.supervisor.build_model"
-    _reporter = "kks_runtime.graph.nodes.reporter.build_model"
+    _supervisor = "runtime.graph.nodes.supervisor.build_model"
+    _reporter = "runtime.graph.nodes.reporter.build_model"
     with (
         patch(_supervisor, return_value=_mock_supervisor_llm()),
         patch(_reporter, return_value=_mock_reporter_llm()),
@@ -92,8 +92,8 @@ async def test_graph_ainvoke_completes(graph):
 @pytest.mark.asyncio
 async def test_graph_ainvoke_domain_target(graph):
     """Domain target completes after log + security findings are present."""
-    _supervisor = "kks_runtime.graph.nodes.supervisor.build_model"
-    _reporter = "kks_runtime.graph.nodes.reporter.build_model"
+    _supervisor = "runtime.graph.nodes.supervisor.build_model"
+    _reporter = "runtime.graph.nodes.reporter.build_model"
     with (
         patch(_supervisor, return_value=_mock_supervisor_llm()),
         patch(_reporter, return_value=_mock_reporter_llm()),
@@ -113,8 +113,8 @@ async def test_graph_ainvoke_domain_target(graph):
 
 @pytest.mark.asyncio
 async def test_graph_streams_artifact_event(graph):
-    _supervisor = "kks_runtime.graph.nodes.supervisor.build_model"
-    _reporter = "kks_runtime.graph.nodes.reporter.build_model"
+    _supervisor = "runtime.graph.nodes.supervisor.build_model"
+    _reporter = "runtime.graph.nodes.reporter.build_model"
     events = []
     with (
         patch(_supervisor, return_value=_mock_supervisor_llm()),
@@ -144,8 +144,8 @@ async def test_graph_streams_artifact_event(graph):
 @pytest.mark.asyncio
 async def test_graph_streams_status_events(graph):
     """Reporter node emits at least two StatusEvent frames: start and complete."""
-    _supervisor = "kks_runtime.graph.nodes.supervisor.build_model"
-    _reporter = "kks_runtime.graph.nodes.reporter.build_model"
+    _supervisor = "runtime.graph.nodes.supervisor.build_model"
+    _reporter = "runtime.graph.nodes.reporter.build_model"
     events = []
     with (
         patch(_supervisor, return_value=_mock_supervisor_llm()),
@@ -177,7 +177,7 @@ async def test_graph_streams_status_events(graph):
 
 def test_log_detective_tool_list_includes_search_knowledge():
     """search_knowledge must be in _LOG_TOOLS — no LLM invocation needed."""
-    from kks_runtime.graph.nodes.log_detective import _LOG_TOOLS
+    from runtime.graph.nodes.log_detective import _LOG_TOOLS
 
     tool_names = {t.name for t in _LOG_TOOLS}
     assert "search_knowledge" in tool_names, (
@@ -187,8 +187,8 @@ def test_log_detective_tool_list_includes_search_knowledge():
 
 def test_log_detective_tool_list_still_contains_es_tools():
     """Sanity: ES tools must not have been accidentally dropped."""
-    from kks_runtime.graph.nodes.log_detective import _LOG_TOOLS
-    from kks_security.tools.es_tools import ES_TOOLS
+    from runtime.graph.nodes.log_detective import _LOG_TOOLS
+    from security.tools.es_tools import ES_TOOLS
 
     es_names = {t.name for t in ES_TOOLS}
     tool_names = {t.name for t in _LOG_TOOLS}

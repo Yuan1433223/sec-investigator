@@ -16,10 +16,10 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
-from kks_runtime.events.protocol import ApprovalDecisionEvent, ApprovalRequestEvent
-from kks_runtime.graph.investigation import build_investigation_graph
-from kks_security.policies.evidence import EvidencePolicy
-from kks_security.schemas.report import InvestigationReport
+from runtime.events.protocol import ApprovalDecisionEvent, ApprovalRequestEvent
+from runtime.graph.investigation import build_investigation_graph
+from security.policies.evidence import EvidencePolicy
+from security.schemas.report import InvestigationReport
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -136,14 +136,14 @@ async def test_supervisor_routes_to_approval_gate_for_critical():
         return events.append
 
     with (
-        patch("kks_runtime.graph.nodes.supervisor.build_model", return_value=mock_llm),
-        patch("kks_runtime.graph.nodes.supervisor.get_stream_writer", _fake_writer),
+        patch("runtime.graph.nodes.supervisor.build_model", return_value=mock_llm),
+        patch("runtime.graph.nodes.supervisor.get_stream_writer", _fake_writer),
         patch(
-            "kks_runtime.graph.nodes.supervisor.default_policy",
+            "runtime.graph.nodes.supervisor.default_policy",
             return_value=_policy(hitl_required_for_critical=True),
         ),
     ):
-        from kks_runtime.graph.nodes.supervisor import supervisor_node
+        from runtime.graph.nodes.supervisor import supervisor_node
 
         result = await supervisor_node(
             {
@@ -180,14 +180,14 @@ async def test_supervisor_routes_directly_to_reporter_when_safe():
         return events.append
 
     with (
-        patch("kks_runtime.graph.nodes.supervisor.build_model", return_value=mock_llm),
-        patch("kks_runtime.graph.nodes.supervisor.get_stream_writer", _fake_writer),
+        patch("runtime.graph.nodes.supervisor.build_model", return_value=mock_llm),
+        patch("runtime.graph.nodes.supervisor.get_stream_writer", _fake_writer),
         patch(
-            "kks_runtime.graph.nodes.supervisor.default_policy",
+            "runtime.graph.nodes.supervisor.default_policy",
             return_value=_policy(hitl_required_for_critical=True),
         ),
     ):
-        from kks_runtime.graph.nodes.supervisor import supervisor_node
+        from runtime.graph.nodes.supervisor import supervisor_node
 
         result = await supervisor_node(
             {
@@ -230,11 +230,11 @@ async def test_graph_pauses_at_approval_gate(graph):
 
     with (
         patch(
-            "kks_runtime.graph.nodes.supervisor.build_model",
+            "runtime.graph.nodes.supervisor.build_model",
             return_value=_mock_supervisor_llm(),
         ),
         patch(
-            "kks_runtime.graph.nodes.reporter.build_model",
+            "runtime.graph.nodes.reporter.build_model",
             return_value=_mock_reporter_llm(),
         ),
     ):
@@ -270,11 +270,11 @@ async def test_graph_resumes_and_completes_on_approve(graph):
     # First invocation — pause at approval_gate
     with (
         patch(
-            "kks_runtime.graph.nodes.supervisor.build_model",
+            "runtime.graph.nodes.supervisor.build_model",
             return_value=_mock_supervisor_llm(),
         ),
         patch(
-            "kks_runtime.graph.nodes.reporter.build_model",
+            "runtime.graph.nodes.reporter.build_model",
             return_value=_mock_reporter_llm(),
         ),
     ):
@@ -294,11 +294,11 @@ async def test_graph_resumes_and_completes_on_approve(graph):
     resume_events = []
     with (
         patch(
-            "kks_runtime.graph.nodes.supervisor.build_model",
+            "runtime.graph.nodes.supervisor.build_model",
             return_value=_mock_supervisor_llm(),
         ),
         patch(
-            "kks_runtime.graph.nodes.reporter.build_model",
+            "runtime.graph.nodes.reporter.build_model",
             return_value=_mock_reporter_llm(),
         ),
     ):
@@ -329,11 +329,11 @@ async def test_graph_resumes_and_fails_on_reject(graph):
     # First invocation — pause
     with (
         patch(
-            "kks_runtime.graph.nodes.supervisor.build_model",
+            "runtime.graph.nodes.supervisor.build_model",
             return_value=_mock_supervisor_llm(),
         ),
         patch(
-            "kks_runtime.graph.nodes.reporter.build_model",
+            "runtime.graph.nodes.reporter.build_model",
             return_value=_mock_reporter_llm(),
         ),
     ):
@@ -353,11 +353,11 @@ async def test_graph_resumes_and_fails_on_reject(graph):
     resume_events = []
     with (
         patch(
-            "kks_runtime.graph.nodes.supervisor.build_model",
+            "runtime.graph.nodes.supervisor.build_model",
             return_value=_mock_supervisor_llm(),
         ),
         patch(
-            "kks_runtime.graph.nodes.reporter.build_model",
+            "runtime.graph.nodes.reporter.build_model",
             return_value=_mock_reporter_llm(),
         ),
     ):
@@ -387,11 +387,11 @@ async def test_graph_skips_approval_gate_for_safe_findings(graph):
 
     with (
         patch(
-            "kks_runtime.graph.nodes.supervisor.build_model",
+            "runtime.graph.nodes.supervisor.build_model",
             return_value=_mock_supervisor_llm(),
         ),
         patch(
-            "kks_runtime.graph.nodes.reporter.build_model",
+            "runtime.graph.nodes.reporter.build_model",
             return_value=_mock_reporter_llm(),
         ),
     ):

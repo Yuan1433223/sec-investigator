@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "kks-next"
+name = "sec-investigator"
 version = "0.1.0"
-description = "Next-generation KKS security monitoring system"
+description = "Constrained-autonomy security investigation agent"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.119.0",
@@ -38,10 +38,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/kks_runtime", "src/kks_security", "src/kks_surfaces"]
+packages = ["src/runtime", "src/security", "src/surfaces"]
 
 [project.scripts]
-kks-serve = "kks_surfaces.api.app:_serve"
+sec-investigator = "surfaces.api.app:_serve"
 
 [tool.ruff]
 line-length = 100

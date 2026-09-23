@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from kks_runtime.config.settings import Settings
-from kks_security.adapters.cc import PointStatus
-from kks_security.tools.security_tools import _is_cc_attack, _is_ddos_attack, _make_security_tools
+from runtime.config.settings import Settings
+from security.adapters.cc import PointStatus
+from security.tools.security_tools import _is_cc_attack, _is_ddos_attack, _make_security_tools
 
 # ---------------------------------------------------------------------------
 # Group 1 — _is_cc_attack (pure)

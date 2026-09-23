@@ -6,8 +6,8 @@ Validates _next_worker capability routing without making any LLM calls.
 
 from __future__ import annotations
 
-from kks_runtime.graph.nodes.asset_resolution import _is_ip
-from kks_runtime.graph.nodes.supervisor import _eligible_workers, _next_worker
+from runtime.graph.nodes.asset_resolution import _is_ip
+from runtime.graph.nodes.supervisor import _eligible_workers, _next_worker
 
 
 def test_is_ip_bare_ip():

@@ -1,4 +1,4 @@
-from kks_security.adapters.es_dsl import ESDSLBuilder
+from security.adapters.es_dsl import ESDSLBuilder
 
 
 def test_raw_documents_basic():

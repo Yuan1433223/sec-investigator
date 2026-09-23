@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from kks_security.tools.es_tools import (
+from security.tools.es_tools import (
     _STATUS_RANGES,
     _agg_result,
     _make_es_tools,
@@ -465,7 +465,7 @@ async def test_query_customer_business_desc_es_error_returns_fallback():
 
 
 def test_es_tools_list_includes_new_tools():
-    from kks_security.tools.es_tools import ES_TOOLS
+    from security.tools.es_tools import ES_TOOLS
     names = {t.name for t in ES_TOOLS}
     assert "query_request_count" in names
     assert "query_status_code_distribution" in names

@@ -6,10 +6,10 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from kks_runtime.graph.investigation import build_investigation_graph
-from kks_security.policies.evidence import default_policy
-from kks_security.schemas.node_machine import NodeMachine
-from kks_security.schemas.report import InvestigationReport
+from runtime.graph.investigation import build_investigation_graph
+from security.policies.evidence import default_policy
+from security.schemas.node_machine import NodeMachine
+from security.schemas.report import InvestigationReport
 
 
 def _mock_supervisor_llm() -> MagicMock:
@@ -113,10 +113,10 @@ async def test_graph_fans_out_asset_workers_and_rolls_up_findings():
         }
 
     graph = None
-    _investigation = "kks_runtime.graph.investigation"
-    _supervisor = "kks_runtime.graph.nodes.supervisor.build_model"
-    _policy = "kks_runtime.graph.nodes.supervisor.default_policy"
-    _reporter = "kks_runtime.graph.nodes.reporter.build_model"
+    _investigation = "runtime.graph.investigation"
+    _supervisor = "runtime.graph.nodes.supervisor.build_model"
+    _policy = "runtime.graph.nodes.supervisor.default_policy"
+    _reporter = "runtime.graph.nodes.reporter.build_model"
     with (
         patch(f"{_investigation}.asset_resolution_node", _asset_resolution),
         patch(f"{_investigation}.log_detective_node", _log_detective),

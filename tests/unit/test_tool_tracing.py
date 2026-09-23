@@ -13,8 +13,8 @@ from __future__ import annotations
 import pytest
 from langchain_core.tools import tool
 
-from kks_runtime.events.protocol import ToolCallEvent, ToolResultEvent
-from kks_runtime.graph.nodes._tool_tracing import _is_empty_result, make_traced_tools
+from runtime.events.protocol import ToolCallEvent, ToolResultEvent
+from runtime.graph.nodes._tool_tracing import _is_empty_result, make_traced_tools
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,7 +53,7 @@ async def test_traced_tool_returns_correct_result(monkeypatch):
     """Wrapped tool must return the same value as the original."""
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -67,7 +67,7 @@ async def test_traced_tool_returns_correct_result(monkeypatch):
 async def test_traced_tool_emits_call_event(monkeypatch):
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -84,7 +84,7 @@ async def test_traced_tool_emits_call_event(monkeypatch):
 async def test_traced_tool_emits_result_event(monkeypatch):
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -102,7 +102,7 @@ async def test_traced_tool_emits_result_event(monkeypatch):
 async def test_traced_tool_emits_error_result_on_exception(monkeypatch):
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -120,7 +120,7 @@ async def test_traced_tool_emits_error_result_on_exception(monkeypatch):
 async def test_traced_tool_call_event_before_result_event(monkeypatch):
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -134,7 +134,7 @@ async def test_traced_tool_call_event_before_result_event(monkeypatch):
 @pytest.mark.asyncio
 async def test_make_traced_tools_preserves_tool_metadata(monkeypatch):
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: (lambda _: None),
     )
 
@@ -148,7 +148,7 @@ async def test_make_traced_tools_preserves_tool_metadata(monkeypatch):
 async def test_make_traced_tools_handles_multiple_tools(monkeypatch):
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -224,7 +224,7 @@ async def test_early_stop_sentinel_after_max_empty_consecutive(monkeypatch):
     """After max_empty=2 consecutive empty results, sentinel string is returned."""
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -243,7 +243,7 @@ async def test_early_stop_counter_resets_on_nonempty(monkeypatch):
     """Counter resets to 0 when a non-empty result follows empty ones."""
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -267,7 +267,7 @@ async def test_early_stop_disabled_when_max_empty_zero(monkeypatch):
     """max_empty=0 disables the counter entirely; sentinel is never returned."""
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 
@@ -283,7 +283,7 @@ async def test_early_stop_counter_shared_across_tools(monkeypatch):
     """All tools in one make_traced_tools call share the same empty counter."""
     events = []
     monkeypatch.setattr(
-        "kks_runtime.graph.nodes._tool_tracing.get_stream_writer",
+        "runtime.graph.nodes._tool_tracing.get_stream_writer",
         lambda: events.append,
     )
 

@@ -1,12 +1,12 @@
 """
-Unit tests for kks_security.playbooks.
+Unit tests for security.playbooks.
 """
 
 import pytest
 
-from kks_runtime.llm.profiles import ModelProfile
-from kks_security.playbooks.base import PlaybookKind
-from kks_security.playbooks.catalog import CATALOG, get_playbook
+from runtime.llm.profiles import ModelProfile
+from security.playbooks.base import PlaybookKind
+from security.playbooks.catalog import CATALOG, get_playbook
 
 
 def test_all_playbook_kinds_in_catalog():

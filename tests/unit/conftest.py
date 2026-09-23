@@ -1,7 +1,7 @@
 """Shared fixtures for Phase 6 unit tests."""
 import pytest
 
-from kks_runtime.config.settings import Settings
+from runtime.config.settings import Settings
 
 
 @pytest.fixture

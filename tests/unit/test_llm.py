@@ -4,10 +4,10 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from kks_runtime.graph.investigation import build_investigation_graph
-from kks_runtime.llm.profiles import _REGISTRY, ModelConfig, ModelProfile, build_model
-from kks_runtime.llm.router import profile_for
-from kks_security.schemas.report import InvestigationReport
+from runtime.graph.investigation import build_investigation_graph
+from runtime.llm.profiles import _REGISTRY, ModelConfig, ModelProfile, build_model
+from runtime.llm.router import profile_for
+from security.schemas.report import InvestigationReport
 
 # ---------------------------------------------------------------------------
 # ModelConfig / registry
@@ -38,7 +38,7 @@ def test_build_model_override_temperature():
 
 
 def test_local_model_uses_local_settings():
-    from kks_runtime.config.settings import Settings
+    from runtime.config.settings import Settings
 
     s = Settings(
         local_model_base="http://custom:8000/v1",
@@ -90,8 +90,8 @@ async def test_supervisor_node_Agent20260422_to_reporter():
     mock_llm = MagicMock()
     mock_llm.with_structured_output.return_value = MagicMock(ainvoke=mock_structured)
 
-    with patch("kks_runtime.graph.nodes.supervisor.build_model", return_value=mock_llm):
-        from kks_runtime.graph.nodes.supervisor import supervisor_node
+    with patch("runtime.graph.nodes.supervisor.build_model", return_value=mock_llm):
+        from runtime.graph.nodes.supervisor import supervisor_node
 
         result = await supervisor_node(
             {
@@ -134,8 +134,8 @@ async def test_graph_with_mocked_supervisor():
     )
 
     with (
-        patch("kks_runtime.graph.nodes.supervisor.build_model", return_value=mock_supervisor_llm),
-        patch("kks_runtime.graph.nodes.reporter.build_model", return_value=mock_reporter_llm),
+        patch("runtime.graph.nodes.supervisor.build_model", return_value=mock_supervisor_llm),
+        patch("runtime.graph.nodes.reporter.build_model", return_value=mock_reporter_llm),
     ):
         graph = build_investigation_graph(checkpointer=MemorySaver())
         result = await graph.ainvoke(

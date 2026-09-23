@@ -1,12 +1,12 @@
 """Unit tests for webhook entity extraction helpers."""
 from datetime import UTC, datetime
 
-from kks_surfaces.webhook.entity import (
+from surfaces.webhook.entity import (
     build_investigation_question,
     detect_entity_type,
     extract_entity,
 )
-from kks_surfaces.webhook.schemas import GrafanaAlert
+from surfaces.webhook.schemas import GrafanaAlert
 
 # ---------------------------------------------------------------------------
 # Helpers

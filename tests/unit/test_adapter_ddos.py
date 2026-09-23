@@ -8,7 +8,7 @@ from __future__ import annotations
 import respx
 from httpx import Response, TimeoutException
 
-from kks_security.adapters.ddos import DDoSAdapter
+from security.adapters.ddos import DDoSAdapter
 
 _BASE = "http://fake-ddos"
 

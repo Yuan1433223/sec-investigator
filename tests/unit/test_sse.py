@@ -1,7 +1,7 @@
 """Unit tests for SSE frame conversion (runtime_event_to_sse, sse_frame_to_wire)."""
 import json
 
-from kks_runtime.events.protocol import (
+from runtime.events.protocol import (
     ApprovalDecisionEvent,
     ApprovalRequestEvent,
     ArtifactEvent,
@@ -11,7 +11,7 @@ from kks_runtime.events.protocol import (
     ToolCallEvent,
     ToolResultEvent,
 )
-from kks_surfaces.web.sse import DONE_FRAME, SSEFrame, runtime_event_to_sse, sse_frame_to_wire
+from surfaces.web.sse import DONE_FRAME, SSEFrame, runtime_event_to_sse, sse_frame_to_wire
 
 # ---------------------------------------------------------------------------
 # runtime_event_to_sse

@@ -2,9 +2,9 @@
 
 ## Scope
 
-This file governs work inside `kks-next`.
+This file governs work inside `sec-investigator`.
 
-`kks-next` is the only active product workspace for the next-generation KKS system.
+`sec-investigator` is the only active product workspace for the next-generation KKS system.
 
 This repo is expected to be:
 
@@ -14,11 +14,11 @@ This repo is expected to be:
 
 ## Workspace assumptions
 
-The development model for `kks-next` is:
+The development model for `sec-investigator` is:
 
 - `LangGraph` is consumed as a package dependency
 - the root workspace contains only:
-  - `kks-next`
+  - `sec-investigator`
   - `KKShieldHelper-main`
 - `KKShieldHelper-main` is the only donor/reference repo expected to sit beside this repo
 
@@ -26,13 +26,13 @@ Do not make this repo depend on any other sibling source tree being present.
 
 ## Core architecture
 
-`kks-next` should be built around three layers:
+`sec-investigator` should be built around three layers:
 
-1. `kks_runtime`
-2. `kks_security`
-3. `kks_surfaces`
+1. `runtime`
+2. `security`
+3. `surfaces`
 
-### `kks_runtime`
+### `runtime`
 
 Responsibilities:
 
@@ -47,7 +47,7 @@ Responsibilities:
 - artifact emission
 - model runtime abstraction
 
-### `kks_security`
+### `security`
 
 Responsibilities:
 
@@ -60,7 +60,7 @@ Responsibilities:
 - schemas
 - RAG and domain retrieval
 
-### `kks_surfaces`
+### `surfaces`
 
 Responsibilities:
 

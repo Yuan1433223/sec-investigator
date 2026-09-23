@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessage
 
-from kks_runtime.graph.nodes.machine_check import machine_check_node
-from kks_runtime.graph.nodes.security_guard import _annotate_operational_issue, security_guard_node
-from kks_security.schemas.findings import MachineFindings, SecurityFindings
-from kks_security.schemas.node_machine import NodeMachine
+from runtime.graph.nodes.machine_check import machine_check_node
+from runtime.graph.nodes.security_guard import _annotate_operational_issue, security_guard_node
+from security.schemas.findings import MachineFindings, SecurityFindings
+from security.schemas.node_machine import NodeMachine
 
 
 def _mock_structured_model(result: object) -> MagicMock:
@@ -45,15 +45,15 @@ async def test_machine_check_dual_writes_asset_findings():
     mock_agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="analysis")]})
 
     with (
-        patch("kks_runtime.graph.nodes.machine_check.get_stream_writer", return_value=lambda _: None),
-        patch("kks_runtime.graph.nodes.machine_check.make_traced_tools", return_value=[]),
-        patch("kks_runtime.graph.nodes.machine_check.create_react_agent", return_value=mock_agent),
+        patch("runtime.graph.nodes.machine_check.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.machine_check.make_traced_tools", return_value=[]),
+        patch("runtime.graph.nodes.machine_check.create_react_agent", return_value=mock_agent),
         patch(
-            "kks_runtime.graph.nodes.machine_check.build_model",
+            "runtime.graph.nodes.machine_check.build_model",
             side_effect=[MagicMock(), _mock_structured_model(findings)],
         ),
         patch(
-            "kks_runtime.graph.nodes.machine_check.default_policy",
+            "runtime.graph.nodes.machine_check.default_policy",
             return_value=_mock_policy(machine="medium"),
         ),
     ):
@@ -95,15 +95,15 @@ async def test_security_guard_dual_writes_asset_findings():
     mock_agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="analysis")]})
 
     with (
-        patch("kks_runtime.graph.nodes.security_guard.get_stream_writer", return_value=lambda _: None),
-        patch("kks_runtime.graph.nodes.security_guard.make_traced_tools", return_value=[]),
-        patch("kks_runtime.graph.nodes.security_guard.create_react_agent", return_value=mock_agent),
+        patch("runtime.graph.nodes.security_guard.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.security_guard.make_traced_tools", return_value=[]),
+        patch("runtime.graph.nodes.security_guard.create_react_agent", return_value=mock_agent),
         patch(
-            "kks_runtime.graph.nodes.security_guard.build_model",
+            "runtime.graph.nodes.security_guard.build_model",
             side_effect=[MagicMock(), _mock_structured_model(findings)],
         ),
         patch(
-            "kks_runtime.graph.nodes.security_guard.default_policy",
+            "runtime.graph.nodes.security_guard.default_policy",
             return_value=_mock_policy(security="low"),
         ),
     ):
@@ -138,15 +138,15 @@ async def test_security_guard_domain_policy_only_stays_target_scoped():
     mock_agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="analysis")]})
 
     with (
-        patch("kks_runtime.graph.nodes.security_guard.get_stream_writer", return_value=lambda _: None),
-        patch("kks_runtime.graph.nodes.security_guard.make_traced_tools", return_value=[]),
-        patch("kks_runtime.graph.nodes.security_guard.create_react_agent", return_value=mock_agent),
+        patch("runtime.graph.nodes.security_guard.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.security_guard.make_traced_tools", return_value=[]),
+        patch("runtime.graph.nodes.security_guard.create_react_agent", return_value=mock_agent),
         patch(
-            "kks_runtime.graph.nodes.security_guard.build_model",
+            "runtime.graph.nodes.security_guard.build_model",
             side_effect=[MagicMock(), _mock_structured_model(findings)],
         ),
         patch(
-            "kks_runtime.graph.nodes.security_guard.default_policy",
+            "runtime.graph.nodes.security_guard.default_policy",
             return_value=_mock_policy(security="medium"),
         ),
     ):
@@ -212,15 +212,15 @@ async def test_machine_check_active_asset_writes_asset_scope_only():
     mock_agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="analysis")]})
 
     with (
-        patch("kks_runtime.graph.nodes.machine_check.get_stream_writer", return_value=lambda _: None),
-        patch("kks_runtime.graph.nodes.machine_check.make_traced_tools", return_value=[]),
-        patch("kks_runtime.graph.nodes.machine_check.create_react_agent", return_value=mock_agent),
+        patch("runtime.graph.nodes.machine_check.get_stream_writer", return_value=lambda _: None),
+        patch("runtime.graph.nodes.machine_check.make_traced_tools", return_value=[]),
+        patch("runtime.graph.nodes.machine_check.create_react_agent", return_value=mock_agent),
         patch(
-            "kks_runtime.graph.nodes.machine_check.build_model",
+            "runtime.graph.nodes.machine_check.build_model",
             side_effect=[MagicMock(), _mock_structured_model(findings)],
         ),
         patch(
-            "kks_runtime.graph.nodes.machine_check.default_policy",
+            "runtime.graph.nodes.machine_check.default_policy",
             return_value=_mock_policy(machine="low"),
         ),
     ):

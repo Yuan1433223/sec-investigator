@@ -1,4 +1,4 @@
-# 旧 KKS（KKShieldHelper-main）有没有 kks-next 里还没迁移到的工具或能力？ 比如 RAG 查询有没有在旧 KKS 的实际调用链里（还是存在但未使用）？node_resolver / waf_collector 在旧 KKS 里是在哪个环节被调用的？
+# 旧 KKS（KKShieldHelper-main）有没有 sec-investigator 里还没迁移到的工具或能力？ 比如 RAG 查询有没有在旧 KKS 的实际调用链里（还是存在但未使用）？node_resolver / waf_collector 在旧 KKS 里是在哪个环节被调用的？
 旧KKS在工作区下KKShieldHelper-main，工具集成应该已经完成，你可再查看源码审计。旧项目包含guard plan react 三种模式，但运行边界模糊，大概的链路KKShieldHelper-main\main.py -> KKShieldHelper-main\agents
 
 
@@ -163,7 +163,7 @@ IP对比趋势	未采集对比数据	数据不足，无法分析
 ### AI分析结果
 
 
-# kks-next 目前的 FastAPI / webhook 入口是否已经可以运行？还是 surfaces 层还有没实现的部分？
+# sec-investigator 目前的 FastAPI / webhook 入口是否已经可以运行？还是 surfaces 层还有没实现的部分？
 迁移后的kks还没有main入口，但是原KKS的FastAPI / webhook 入口均为已经可以运行，链路的验证或者开发可以直接参考原KKS的实现。
 
 
@@ -171,9 +171,9 @@ IP对比趋势	未采集对比数据	数据不足，无法分析
 ## 缺口 1：原始 Grafana webhook payload
 context.md 里记录的"分析问题"字段（实体: game.ali213.net, 告警: ..., 时间段: ..., 请巡检分析原因）是运维人员整理后的输入，不是 Grafana 直接发出的 JSON。
 
-我需要确认：kks-next 的 webhook 入口是接收 Grafana 原始 webhook JSON，还是接收运维人工整理的文本？
+我需要确认：sec-investigator 的 webhook 入口是接收 Grafana 原始 webhook JSON，还是接收运维人工整理的文本？
 
-旧 KKS 的实现里 webhook schema 是怎么接收的，直接决定 kks-next surfaces 的数据模型是否已对齐。
+旧 KKS 的实现里 webhook schema 是怎么接收的，直接决定 sec-investigator surfaces 的数据模型是否已对齐。
 
 ## 缺口 2：machine_check 在正式环境的实际角色
 3 条记录全是域名告警，machine_check（Prometheus）都被跳过了。需要确认：IP 类告警在正式环境是否存在，还是实际上所有告警实体都是域名？ 这影响 machine_check 工具集的集成测试优先级。

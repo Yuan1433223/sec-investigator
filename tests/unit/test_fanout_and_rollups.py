@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from langgraph.types import Send
 
-from kks_runtime.graph.nodes.fanout import route_security_checks
-from kks_runtime.graph.nodes.rollups import machine_rollup_node, security_rollup_node
-from kks_security.schemas.node_machine import NodeMachine
+from runtime.graph.nodes.fanout import route_security_checks
+from runtime.graph.nodes.rollups import machine_rollup_node, security_rollup_node
+from security.schemas.node_machine import NodeMachine
 
 
 def test_route_security_checks_domain_policy_only_falls_back_to_target_scope():

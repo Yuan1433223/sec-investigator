@@ -4,14 +4,14 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from kks_surfaces.webhook.schemas import GrafanaAlert, GrafanaWebhook
+from surfaces.webhook.schemas import GrafanaAlert, GrafanaWebhook
 
 # ---------------------------------------------------------------------------
 # Minimal valid fixture
 # ---------------------------------------------------------------------------
 
 _WEBHOOK_JSON = {
-    "receiver": "kks-next",
+    "receiver": "sec-investigator",
     "status": "firing",
     "alerts": [
         {
@@ -102,7 +102,7 @@ def test_grafana_webhook_multiple_alerts():
 def test_grafana_webhook_from_json_string():
     raw = json.dumps(_WEBHOOK_JSON)
     wh = GrafanaWebhook.model_validate_json(raw)
-    assert wh.receiver == "kks-next"
+    assert wh.receiver == "sec-investigator"
 
 
 def test_grafana_webhook_extra_fields_allowed():

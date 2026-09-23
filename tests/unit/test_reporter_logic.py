@@ -6,14 +6,14 @@ without invoking the LLM. Imports the private helpers directly.
 """
 from __future__ import annotations
 
-from kks_runtime.artifacts.investigation import InvestigationArtifact
-from kks_runtime.graph.nodes.reporter import (
+from runtime.artifacts.investigation import InvestigationArtifact
+from runtime.graph.nodes.reporter import (
     _derive_risk_level,
     _format_asset_findings,
     _format_findings,
     _parse_recommendations,
 )
-from kks_security.schemas.report import InvestigationReport
+from security.schemas.report import InvestigationReport
 
 # ---------------------------------------------------------------------------
 # _derive_risk_level

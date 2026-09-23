@@ -11,8 +11,8 @@ import pytest
 import respx
 from httpx import Response
 
-from kks_runtime.config.settings import Settings
-from kks_security.adapters.prometheus import (
+from runtime.config.settings import Settings
+from security.adapters.prometheus import (
     PrometheusAdapter,
     _calc_step,
     _peak_value,

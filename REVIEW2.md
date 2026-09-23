@@ -1,11 +1,11 @@
 当前图
 
-  ┌──────────────────────────── kks_surfaces ────────────────────────────┐
+  ┌──────────────────────────── surfaces ────────────────────────────┐
   │ API / webhook / SSE / Feishu                                        │
   │ 负责入口、回包、后台触发、消息投递                                   │
   └───────────────────────────────┬──────────────────────────────────────┘
                                   │ invoke graph
-  ┌──────────────────────────── kks_runtime ─────────────────────────────┐
+  ┌──────────────────────────── runtime ─────────────────────────────┐
   │ State / Events / Checkpoint / LLM Profiles / LangGraph              │
   │                                                                     │
   │ START                                                               │
@@ -25,7 +25,7 @@
   │ - supervisor 主要按 target_type 路由                                │
   └───────────────────────────────┬──────────────────────────────────────┘
                                   │ call tools / policies
-  ┌──────────────────────────── kks_security ────────────────────────────┐
+  ┌──────────────────────────── security ────────────────────────────┐
   │ playbooks / schemas / policies / collectors / tools / adapters      │
   │                                                                     │
   │ ES tools      Prom tools      Security tools                        │
@@ -35,12 +35,12 @@
 
   三层内收敛后的目标图
 
-  ┌──────────────────────────── kks_surfaces ────────────────────────────┐
+  ┌──────────────────────────── surfaces ────────────────────────────┐
   │ API / webhook / SSE / Feishu                                        │
   │ 只做入口适配、事件订阅、结果投递                                     │
   └───────────────────────────────┬──────────────────────────────────────┘
                                   │
-  ┌──────────────────────────── kks_runtime ─────────────────────────────┐
+  ┌──────────────────────────── runtime ─────────────────────────────┐
   │ LangGraph 真正按“资产图”驱动                                         │
   │                                                                     │
   │ START                                                               │
@@ -62,7 +62,7 @@
   │ - runtime 负责 fan-out / fan-in / state reduce                      │
   └───────────────────────────────┬──────────────────────────────────────┘
                                   │
-  ┌──────────────────────────── kks_security ────────────────────────────┐
+  ┌──────────────────────────── security ────────────────────────────┐
   │ 业务核心继续沉在这一层                                               │
   │                                                                     │
   │ 资产解析模型：NodeMachine / source_type / node_type                 │
@@ -164,22 +164,22 @@
   - domain service 明确化，避免 runtime 直接拼 surface 交付逻辑。
 
   一句话判断
-  kks-next 现在已经像“正确方向的调查内核”，
+  sec-investigator 现在已经像“正确方向的调查内核”，
   成品时要升级成“带治理、审计、租户、回放、异步入口的企业级安全调查平台”。
 
 
-现在的 kks-next 三层骨架是对的：
+现在的 sec-investigator 三层骨架是对的：
 
-  - src/kks_surfaces/：入口与交付层，见 /D:/Agent20260422/kks-next/src/kks_surfaces/api/app.py
-  - src/kks_runtime/：运行时内核，见 /D:/Agent20260422/kks-next/src/kks_runtime/graph/investigation.py
-  - src/kks_security/：安全业务域，见 /D:/Agent20260422/kks-next/src/kks_security/playbooks/catalog.py
+  - src/surfaces/：入口与交付层，见 /D:/Agent20260422/sec-investigator/src/surfaces/api/app.py
+  - src/runtime/：运行时内核，见 /D:/Agent20260422/sec-investigator/src/runtime/graph/investigation.py
+  - src/security/：安全业务域，见 /D:/Agent20260422/sec-investigator/src/security/playbooks/catalog.py
 
   如果要走到“企业开源级成品架构”，我建议重组为：
 
   src/
   ├─ kks_app/           # 应用装配层
-  ├─ kks_surfaces/      # 对外交互层
-  ├─ kks_runtime/       # 图运行时与会话内核
+  ├─ surfaces/      # 对外交互层
+  ├─ runtime/       # 图运行时与会话内核
   ├─ kks_domain/        # 纯业务域模型与领域服务
   ├─ kks_integrations/  # 外部系统适配器
   ├─ kks_platform/      # 平台能力：鉴权、租户、审计、配置、观测
@@ -187,26 +187,26 @@
 
   当前目录怎么落位
 
-  - kks_surfaces 基本保留。
-  - kks_runtime 基本保留，但只保留运行时语义：state、graph、events、checkpoint、approval、artifacts、llm profile。
-  - kks_security 需要拆成两半：
+  - surfaces 基本保留。
+  - runtime 基本保留，但只保留运行时语义：state、graph、events、checkpoint、approval、artifacts、llm profile。
+  - security 需要拆成两半：
       - 纯业务语义放进 kks_domain
       - 外部接口接入放进 kks_integrations
 
   更具体地说：
 
-  - src/kks_security/playbooks/ -> src/kks_domain/investigation/playbooks/
-  - src/kks_security/policies/ -> src/kks_domain/investigation/policies/
-  - src/kks_security/schemas/findings.py -> src/kks_domain/investigation/models/findings.py
-  - src/kks_security/schemas/report.py -> src/kks_domain/investigation/models/report.py
-  - src/kks_security/tools/ -> 拆分
+  - src/security/playbooks/ -> src/kks_domain/investigation/playbooks/
+  - src/security/policies/ -> src/kks_domain/investigation/policies/
+  - src/security/schemas/findings.py -> src/kks_domain/investigation/models/findings.py
+  - src/security/schemas/report.py -> src/kks_domain/investigation/models/report.py
+  - src/security/tools/ -> 拆分
       - 面向 graph 的 tool facade 留在 src/kks_domain/investigation/tools/
       - 真正访问外部系统的逻辑下沉到 src/kks_integrations/...
-  - src/kks_security/adapters/ -> src/kks_integrations/observability/ 和 src/kks_integrations/security_products/
-  - src/kks_security/collectors/ -> src/kks_domain/assets/services/ 或 src/kks_integrations/security_products/
+  - src/security/adapters/ -> src/kks_integrations/observability/ 和 src/kks_integrations/security_products/
+  - src/security/collectors/ -> src/kks_domain/assets/services/ 或 src/kks_integrations/security_products/
     collectors/
-  - src/kks_surfaces/feishu/ 最终应只做交付，不该被 runtime 直接 import，当前 /D:/Agent20260422/kks-next/src/
-    kks_runtime/graph/nodes/reporter.py 这层依赖后面要切掉。
+  - src/surfaces/feishu/ 最终应只做交付，不该被 runtime 直接 import，当前 /D:/Agent20260422/sec-investigator/src/
+    runtime/graph/nodes/reporter.py 这层依赖后面要切掉。
 
   建议新增目录
 
@@ -266,7 +266,7 @@
 
   我建议的落地顺序
 
-  1. 先拆 kks_security。
+  1. 先拆 security。
   2. 再引入 kks_domain/assets/，把资产解析单独立起来。
   3. 然后切断 runtime -> surfaces 反向依赖。
   4. 最后补 kks_platform/auth|audit|tenancy 和 kks_eval/。

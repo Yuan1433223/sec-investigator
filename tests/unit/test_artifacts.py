@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from kks_runtime.artifacts.investigation import InvestigationArtifact, ReportArtifact
+from runtime.artifacts.investigation import InvestigationArtifact, ReportArtifact
 
 
 def test_investigation_artifact_defaults():

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from kks_security.tools.public_tools import (
+from security.tools.public_tools import (
     _GF_TABLE_STRUCT,
     _WAF_TABLE_STRUCT,
     PUBLIC_TOOLS,
@@ -56,14 +56,14 @@ async def test_current_time_is_recent():
 
 @pytest.mark.asyncio
 async def test_check_connection_status_returns_dict_keyed_by_target():
-    with patch("kks_security.tools.public_tools._ping_sync", return_value="reachable"):
+    with patch("security.tools.public_tools._ping_sync", return_value="reachable"):
         result = await check_connection_status.ainvoke({"targets": ["1.2.3.4", "5.6.7.8"]})
     assert set(result.keys()) == {"1.2.3.4", "5.6.7.8"}
 
 
 @pytest.mark.asyncio
 async def test_check_connection_status_maps_values():
-    with patch("kks_security.tools.public_tools._ping_sync", return_value="unreachable"):
+    with patch("security.tools.public_tools._ping_sync", return_value="unreachable"):
         result = await check_connection_status.ainvoke({"targets": ["1.2.3.4"]})
     assert result["1.2.3.4"] == "unreachable"
 
@@ -84,7 +84,7 @@ def test_ping_sync_success(monkeypatch):
     mock_result.returncode = 0
     mock_result.stdout = "Minimum = 5ms, Maximum = 10ms, Average = 7ms"
     monkeypatch.setattr(
-        "kks_security.tools.public_tools.subprocess.run", lambda *a, **kw: mock_result
+        "security.tools.public_tools.subprocess.run", lambda *a, **kw: mock_result
     )
     out = _ping_sync("1.2.3.4")
     assert "reachable" in out
@@ -95,7 +95,7 @@ def test_ping_sync_failure(monkeypatch):
     mock_result.returncode = 1
     mock_result.stdout = ""
     monkeypatch.setattr(
-        "kks_security.tools.public_tools.subprocess.run", lambda *a, **kw: mock_result
+        "security.tools.public_tools.subprocess.run", lambda *a, **kw: mock_result
     )
     out = _ping_sync("1.2.3.4")
     assert out == "unreachable"
@@ -104,7 +104,7 @@ def test_ping_sync_failure(monkeypatch):
 def test_ping_sync_timeout(monkeypatch):
     import subprocess
     monkeypatch.setattr(
-        "kks_security.tools.public_tools.subprocess.run",
+        "security.tools.public_tools.subprocess.run",
         lambda *a, **kw: (_ for _ in ()).throw(subprocess.TimeoutExpired(cmd="ping", timeout=10)),
     )
     out = _ping_sync("1.2.3.4")
@@ -167,21 +167,21 @@ def test_public_tools_has_four_tools():
 
 
 def test_security_guard_tool_list_includes_check_connection_status():
-    from kks_runtime.graph.nodes.security_guard import _SECURITY_TOOLS
+    from runtime.graph.nodes.security_guard import _SECURITY_TOOLS
 
     tool_names = {t.name for t in _SECURITY_TOOLS}
     assert "check_connection_status" in tool_names
 
 
 def test_security_guard_tool_list_includes_current_time():
-    from kks_runtime.graph.nodes.security_guard import _SECURITY_TOOLS
+    from runtime.graph.nodes.security_guard import _SECURITY_TOOLS
 
     tool_names = {t.name for t in _SECURITY_TOOLS}
     assert "current_time" in tool_names
 
 
 def test_log_detective_tool_list_includes_table_tools():
-    from kks_runtime.graph.nodes.log_detective import _LOG_TOOLS
+    from runtime.graph.nodes.log_detective import _LOG_TOOLS
 
     tool_names = {t.name for t in _LOG_TOOLS}
     assert "get_gf_log_table_structure" in tool_names

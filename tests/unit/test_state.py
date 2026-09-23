@@ -1,4 +1,4 @@
-from kks_runtime.state.session import _merge_dict, _merge_nested_dict
+from runtime.state.session import _merge_dict, _merge_nested_dict
 
 
 def test_merge_dict_basic():

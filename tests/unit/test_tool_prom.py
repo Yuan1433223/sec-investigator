@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from kks_security.tools.prom_tools import _make_prom_tools, _ts
+from security.tools.prom_tools import _make_prom_tools, _ts
 
 _TIME_ARGS = {
     "instance": "1.2.3.4",
@@ -205,7 +205,7 @@ async def test_query_instance_socket_no_data():
 
 
 def test_prom_tools_list_includes_new_tools():
-    from kks_security.tools.prom_tools import PROM_TOOLS
+    from security.tools.prom_tools import PROM_TOOLS
     names = {t.name for t in PROM_TOOLS}
     assert "query_instance_disk" in names
     assert "query_instance_socket" in names

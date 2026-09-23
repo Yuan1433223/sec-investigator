@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from kks_runtime.graph.nodes.asset_resolution import (
+from runtime.graph.nodes.asset_resolution import (
     _is_ip,
     _machines_from_gf_nodes,
     _machines_from_resolver_data,
@@ -18,9 +18,9 @@ from kks_runtime.graph.nodes.asset_resolution import (
     _split_scope,
     asset_resolution_node,
 )
-from kks_security.collectors.gf_collector import GFNode
-from kks_security.collectors.waf_collector import WAFNode
-from kks_security.schemas.node_machine import NodeMachine
+from security.collectors.gf_collector import GFNode
+from security.collectors.waf_collector import WAFNode
+from security.schemas.node_machine import NodeMachine
 
 
 def test_is_ip_bare_ip():
@@ -210,7 +210,7 @@ async def test_asset_resolution_ip_waf():
     mock_resolver.aclose = AsyncMock()
 
     with patch(
-        "kks_runtime.graph.nodes.asset_resolution.NodeResolver",
+        "runtime.graph.nodes.asset_resolution.NodeResolver",
         return_value=mock_resolver,
     ):
         result = await asset_resolution_node({"target": "10.0.0.1"})
@@ -243,7 +243,7 @@ async def test_asset_resolution_ip_unresolved_becomes_bare_node():
     mock_resolver.aclose = AsyncMock()
 
     with patch(
-        "kks_runtime.graph.nodes.asset_resolution.NodeResolver",
+        "runtime.graph.nodes.asset_resolution.NodeResolver",
         return_value=mock_resolver,
     ):
         result = await asset_resolution_node({"target": "192.168.1.1"})
@@ -270,7 +270,7 @@ async def test_asset_resolution_domain_gf_first():
     mock_gf.aclose = AsyncMock()
 
     with patch(
-        "kks_runtime.graph.nodes.asset_resolution.GFCollector",
+        "runtime.graph.nodes.asset_resolution.GFCollector",
         return_value=mock_gf,
     ):
         result = await asset_resolution_node({"target": "example.com"})
@@ -298,8 +298,8 @@ async def test_asset_resolution_domain_falls_back_to_waf():
     mock_waf.aclose = AsyncMock()
 
     with (
-        patch("kks_runtime.graph.nodes.asset_resolution.GFCollector", return_value=mock_gf),
-        patch("kks_runtime.graph.nodes.asset_resolution.WAFCollector", return_value=mock_waf),
+        patch("runtime.graph.nodes.asset_resolution.GFCollector", return_value=mock_gf),
+        patch("runtime.graph.nodes.asset_resolution.WAFCollector", return_value=mock_waf),
     ):
         result = await asset_resolution_node({"target": "example.com"})
 
@@ -318,8 +318,8 @@ async def test_asset_resolution_domain_no_results():
     mock_waf.aclose = AsyncMock()
 
     with (
-        patch("kks_runtime.graph.nodes.asset_resolution.GFCollector", return_value=mock_gf),
-        patch("kks_runtime.graph.nodes.asset_resolution.WAFCollector", return_value=mock_waf),
+        patch("runtime.graph.nodes.asset_resolution.GFCollector", return_value=mock_gf),
+        patch("runtime.graph.nodes.asset_resolution.WAFCollector", return_value=mock_waf),
     ):
         result = await asset_resolution_node({"target": "unknown.example.com"})
 

@@ -26,8 +26,8 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from kks_runtime.graph.investigation import build_investigation_graph
-from kks_security.schemas.report import InvestigationReport
+from runtime.graph.investigation import build_investigation_graph
+from security.schemas.report import InvestigationReport
 
 # ---------------------------------------------------------------------------
 # Scenario fixtures — input + pre-built findings matching context.md gold answers
@@ -143,16 +143,16 @@ def _mock_reporter_llm(report: InvestigationReport) -> MagicMock:
     return mock_llm
 
 
-_SUPERVISOR_PATH = "kks_runtime.graph.nodes.supervisor.build_model"
-_REPORTER_PATH = "kks_runtime.graph.nodes.reporter.build_model"
-_DEFAULT_POLICY_PATH = "kks_runtime.graph.nodes.supervisor.default_policy"
+_SUPERVISOR_PATH = "runtime.graph.nodes.supervisor.build_model"
+_REPORTER_PATH = "runtime.graph.nodes.reporter.build_model"
+_DEFAULT_POLICY_PATH = "runtime.graph.nodes.supervisor.default_policy"
 
 
 def _no_hitl_policy():
     """Return an EvidencePolicy with HITL disabled — replay tests bypass approval gate."""
     import dataclasses
 
-    from kks_security.policies.evidence import default_policy
+    from security.policies.evidence import default_policy
 
     return dataclasses.replace(default_policy(), hitl_required_for_critical=False)
 
@@ -224,7 +224,7 @@ async def test_replay_streams_events(scenario):
     """
     Stream replay: verify FinalEvent emitted with correct artifact.
     """
-    from kks_runtime.events.protocol import FinalEvent, StatusEvent
+    from runtime.events.protocol import FinalEvent, StatusEvent
 
     report = InvestigationReport(
         alert_status=scenario["expected_alert_status"],
@@ -277,34 +277,36 @@ async def test_replay_streams_events(scenario):
 
 
 def test_domain_target_routing_skips_machine_check():
-    """_next_worker never returns machine_check for a domain target."""
-    from kks_runtime.graph.nodes.supervisor import _next_worker
+    """_next_worker never returns machine_check when the asset scope has no machine capability."""
+    from runtime.graph.nodes.supervisor import _eligible_workers, _next_worker
 
+    eligible = _eligible_workers({"security": ["cc"]})  # domain: security only, no machine
     findings: dict = {}
-    assert _next_worker(findings, is_ip_target=False) == "log_detective"
+    assert _next_worker(findings, eligible) == "log_detective"
     findings["logs"] = {}
-    assert _next_worker(findings, is_ip_target=False) == "security_guard"
+    assert _next_worker(findings, eligible) == "security_guard"
     findings["security"] = {}
-    assert _next_worker(findings, is_ip_target=False) == "reporter"
+    assert _next_worker(findings, eligible) == "reporter"
 
 
 def test_ip_target_routing_includes_machine_check():
-    """_next_worker includes machine_check for IP targets."""
-    from kks_runtime.graph.nodes.supervisor import _next_worker
+    """_next_worker includes machine_check when the asset scope has machine capability."""
+    from runtime.graph.nodes.supervisor import _eligible_workers, _next_worker
 
+    eligible = _eligible_workers({"machine": ["node"], "security": ["cc"]})  # ip: machine + security
     findings: dict = {}
-    assert _next_worker(findings, is_ip_target=True) == "log_detective"
+    assert _next_worker(findings, eligible) == "log_detective"
     findings["logs"] = {}
-    assert _next_worker(findings, is_ip_target=True) == "machine_check"
+    assert _next_worker(findings, eligible) == "machine_check"
     findings["machine"] = {}
-    assert _next_worker(findings, is_ip_target=True) == "security_guard"
+    assert _next_worker(findings, eligible) == "security_guard"
     findings["security"] = {}
-    assert _next_worker(findings, is_ip_target=True) == "reporter"
+    assert _next_worker(findings, eligible) == "reporter"
 
 
 def test_all_three_scenarios_are_domain_targets():
     """Each recorded incident target is classified as a domain (not an IP)."""
-    from kks_runtime.graph.nodes.supervisor import _is_ip
+    from runtime.graph.nodes.supervisor import _is_ip
 
     for scenario in _SCENARIOS:
         assert not _is_ip(scenario["target"]), (
@@ -330,7 +332,7 @@ def test_critical_risk_findings_trigger_approval_policy():
     """
     import dataclasses
 
-    from kks_security.policies.evidence import default_policy
+    from security.policies.evidence import default_policy
 
     policy = dataclasses.replace(default_policy(), hitl_required_for_critical=True)
 

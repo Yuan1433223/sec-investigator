@@ -10,7 +10,7 @@ from __future__ import annotations
 import respx
 from httpx import Response
 
-from kks_security.collectors.gf_collector import GFCollector
+from security.collectors.gf_collector import GFCollector
 
 _YXD = "http://fake-gf-yxd"
 _CDN = "http://fake-gf-cdn"

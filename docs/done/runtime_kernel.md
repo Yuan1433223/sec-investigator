@@ -1,6 +1,6 @@
-Plan: kks-next Phase 1 — Runtime Kernel
+Plan: sec-investigator Phase 1 — Runtime Kernel
 Context
-Phase 0 delivered a clean project scaffold. Phase 1 wires the core of kks_runtime: the state schema, event protocol, artifact contracts, LLM profile factory, checkpoint factory, and the first LangGraph investigation graph. No domain logic is implemented yet — this phase establishes the contracts every future phase depends on.
+Phase 0 delivered a clean project scaffold. Phase 1 wires the core of runtime: the state schema, event protocol, artifact contracts, LLM profile factory, checkpoint factory, and the first LangGraph investigation graph. No domain logic is implemented yet — this phase establishes the contracts every future phase depends on.
 
 Key decisions informed by donor repo and LangGraph 1.1.9 API exploration:
 
@@ -10,7 +10,7 @@ Retry policy is a first-class add_node() parameter (retry_policy=RetryPolicy(...
 Checkpointers are async context managers (AsyncSqliteSaver.from_conn_string()).
 Stream mode "custom" allows nodes to push typed events via get_stream_writer().
 Files to create
-src/kks_runtime/state/session.py
+src/runtime/state/session.py
 Internal state (SessionState), external input (InvestigationInput), external output (InvestigationOutput) as TypedDicts. Key reducer design:
 
 messages — Annotated[list[AnyMessage], add_messages] (LangGraph built-in)
@@ -37,7 +37,7 @@ InvestigationOutput:
   findings: dict[str, Any]
   artifacts: list[dict]
   status: str
-src/kks_runtime/events/protocol.py
+src/runtime/events/protocol.py
 Six Pydantic event models + RuntimeEvent union. Used by surface layer to translate LangGraph "custom" stream parts into wire-format SSE.
 
 StatusEvent      type="status"      node, message
@@ -50,7 +50,7 @@ ErrorEvent       type="error"       message, node=None
 RuntimeEvent = Annotated[Union[...all six...], Field(discriminator="type")]
 All models extend BaseModel. Use model_json_schema() for wire doc.
 
-src/kks_runtime/artifacts/investigation.py
+src/runtime/artifacts/investigation.py
 Two Pydantic artifact models that will be placed into SessionState.artifacts:
 
 InvestigationArtifact:
@@ -67,7 +67,7 @@ ReportArtifact:
   session_id, target
   content: str   ← markdown body
   created_at: datetime
-src/kks_runtime/checkpoint/factory.py
+src/runtime/checkpoint/factory.py
 Async context manager factory. Reads Settings.env to choose backend:
 
 @asynccontextmanager
@@ -82,7 +82,7 @@ async def get_checkpointer(settings: Settings | None = None):
             yield saver
 No module-level singleton. Caller owns the lifecycle.
 
-src/kks_runtime/llm/profiles.py
+src/runtime/llm/profiles.py
 ModelProfile StrEnum + get_model(profile) factory:
 
 ModelProfile:
@@ -96,26 +96,26 @@ ModelProfile:
 get_model(profile) → ChatOpenAI(model=..., api_key=..., base_url=...)
 Uses get_settings() per call — no cached model clients at import time (hard rule 4).
 
-src/kks_runtime/graph/nodes/supervisor.py
+src/runtime/graph/nodes/supervisor.py
 Phase 1 stub. Always routes to "reporter". Sets up the pattern for Phase 3 routing:
 
 Returns {"next_node": "reporter", "agent_task": "...", "status": "running"}
 No LLM call yet — placeholder for the structured routing logic
-src/kks_runtime/graph/nodes/reporter.py
+src/runtime/graph/nodes/reporter.py
 Phase 1 stub. Assembles a minimal InvestigationArtifact from state and appends it:
 
 Reads state["findings"], state["target"], state["session_id"]
 Creates InvestigationArtifact(risk_level="low", summary="stub", ...)
 Returns {"artifacts": [artifact.model_dump()], "status": "completed"}
 Emits ArtifactEvent via get_stream_writer() (demonstrates custom stream path)
-src/kks_runtime/graph/investigation.py
+src/runtime/graph/investigation.py
 build_investigation_graph(checkpointer=None) factory. Returns CompiledStateGraph.
 
 START → supervisor →(conditional)→ reporter → END
                    ↑______loop______↑  (when next_node == "supervisor")
 Supervisor node gets retry_policy=RetryPolicy(max_attempts=3) to demonstrate the pattern.
 
-src/kks_runtime/approvals/gate.py
+src/runtime/approvals/gate.py
 approval_gate(state) node function using interrupt():
 
 async def approval_gate(state: SessionState) -> dict:
@@ -148,16 +148,16 @@ ainvoke a minimal input and assert status == "completed" and artifacts is non-em
 Assert graph nodes exist: supervisor, reporter
 Critical files
 File	Status
-src/kks_runtime/state/session.py	Create
-src/kks_runtime/events/protocol.py	Create
-src/kks_runtime/artifacts/investigation.py	Create
-src/kks_runtime/checkpoint/factory.py	Create
-src/kks_runtime/llm/profiles.py	Create
-src/kks_runtime/graph/nodes/supervisor.py	Create
-src/kks_runtime/graph/nodes/reporter.py	Create
-src/kks_runtime/graph/nodes/__init__.py	Create
-src/kks_runtime/graph/investigation.py	Create
-src/kks_runtime/approvals/gate.py	Create
+src/runtime/state/session.py	Create
+src/runtime/events/protocol.py	Create
+src/runtime/artifacts/investigation.py	Create
+src/runtime/checkpoint/factory.py	Create
+src/runtime/llm/profiles.py	Create
+src/runtime/graph/nodes/supervisor.py	Create
+src/runtime/graph/nodes/reporter.py	Create
+src/runtime/graph/nodes/__init__.py	Create
+src/runtime/graph/investigation.py	Create
+src/runtime/approvals/gate.py	Create
 tests/unit/test_state.py	Create
 tests/unit/test_events.py	Create
 tests/unit/test_artifacts.py	Create
@@ -169,7 +169,7 @@ No ES/Prometheus/WAF adapters (Phase 3)
 No FastAPI surface (Phase 5)
 No Feishu delivery (Phase 5)
 Verification
-cd d:/Agent20260422/kks-next
+cd d:/Agent20260422/sec-investigator
 
 # All existing + new tests pass
 uv run pytest tests/ -q
@@ -181,7 +181,7 @@ uv run ruff check src/
 uv run python -c "
 import asyncio
 from langgraph.checkpoint.memory import MemorySaver
-from kks_runtime.graph.investigation import build_investigation_graph
+from runtime.graph.investigation import build_investigation_graph
 from langchain_core.messages import HumanMessage
 
 async def main():

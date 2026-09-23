@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from kks_security.adapters.prometheus import PrometheusAdapter, _calc_step, _peak_value
-from kks_security.tools.prom_tools import _make_prom_tools
+from security.adapters.prometheus import PrometheusAdapter, _calc_step, _peak_value
+from security.tools.prom_tools import _make_prom_tools
 
 # ---------------------------------------------------------------------------
 # Pure helpers

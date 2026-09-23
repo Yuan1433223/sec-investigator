@@ -1,4 +1,4 @@
-# kks-next TODO
+# sec-investigator TODO
 
 > 定位更新（2026-09-23）：从"企业内网安全系统"改为**个人可展示作品**——
 > 目标：独立可运行、公开安全（无企内凭据/标识）、工程整洁、有版本演进叙事。
@@ -9,11 +9,11 @@
 
 ### M1 命名清理：去掉 `kks_` 前缀
 - [ ] `git init`（当前非仓库，先建版本库，改名作为一次干净 commit）
-- [ ] 目录改名：`kks_runtime → runtime` / `kks_security → security` / `kks_surfaces → surfaces`
+- [ ] 目录改名：`runtime → runtime` / `security → security` / `surfaces → surfaces`
       【待确认：裸名，还是保留中性前缀】
 - [ ] 更新引用：~317 处 py（82 文件）+ ~185 处 toml/md/env（15 文件）
-- [ ] pyproject：project name / console script `kks-serve` / wheel packages
-- [ ] settings.sqlite_path + db 文件 `kks_dev.db` + LangSmith project 名
+- [ ] pyproject：project name / console script `sec-investigator` / wheel packages
+- [ ] settings.sqlite_path + db 文件 `sec_investigator.db` + LangSmith project 名
 - [ ] 品牌清洗：移除 `kk` / `快快网络` / `kk30.net` 等公司标识
 - [ ] 验证：全量测试通过
 
@@ -43,7 +43,7 @@
 
 ## Current status（2026-04-30，保留）
 
-三层架构已稳定：`kks_runtime` / `kks_security` / `kks_surfaces`；
+三层架构已稳定：`runtime` / `security` / `surfaces`；
 `asset_resolution` 为图入口；supervisor 能力驱动路由；machine/security worker 经 `Send` 资产级扇出 + rollup；`reporter` 产出含 findings / asset_findings / 结构化 report 的 artifact；HITL 门在主路径。
 
 ```text
@@ -97,7 +97,7 @@ START → asset_resolution → supervisor
 - [ ] 解决告警时间窗策略
 - [ ] 旧 KKS 旁跑一条 live shadow stream
 - [ ] 真实告警上对比 findings/report 输出
-- [ ] 将一个生产面迁到 kks-next
+- [ ] 将一个生产面迁到 sec-investigator
 - [ ] parity 证明后退役旧 KKS
 
 ### P2 deferred

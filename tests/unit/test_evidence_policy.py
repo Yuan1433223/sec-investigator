@@ -1,9 +1,9 @@
-"""Unit tests for kks_security.policies.evidence."""
+"""Unit tests for security.policies.evidence."""
 
 import pytest
 
-from kks_runtime.config.settings import Settings
-from kks_security.policies.evidence import EvidencePolicy, default_policy
+from runtime.config.settings import Settings
+from security.policies.evidence import EvidencePolicy, default_policy
 
 
 def test_default_policy_returns_evidence_policy():
@@ -52,8 +52,8 @@ def test_ddos_threshold_is_one_gbps_in_kbps():
 
 
 def test_cc_attack_detection_logic():
-    from kks_security.adapters.cc import PointStatus  # noqa: PLC0415
-    from kks_security.tools.security_tools import _is_cc_attack  # noqa: PLC0415
+    from security.adapters.cc import PointStatus  # noqa: PLC0415
+    from security.tools.security_tools import _is_cc_attack  # noqa: PLC0415
 
     s = Settings(cc_attack_pps_threshold=2000, cc_attack_delta_threshold=1000)
     policy = default_policy(settings=s)
@@ -72,7 +72,7 @@ def test_cc_attack_detection_logic():
 
 
 def test_ddos_attack_detection_logic():
-    from kks_security.tools.security_tools import _is_ddos_attack  # noqa: PLC0415
+    from security.tools.security_tools import _is_ddos_attack  # noqa: PLC0415
 
     s = Settings(ddos_attack_kbps_threshold=1_000_000)
     policy = default_policy(settings=s)

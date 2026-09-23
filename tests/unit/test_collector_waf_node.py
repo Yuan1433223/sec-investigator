@@ -8,8 +8,8 @@ from __future__ import annotations
 import respx
 from httpx import Response
 
-from kks_security.collectors.node_resolver import NodeResolver
-from kks_security.collectors.waf_collector import WAFCollector
+from security.collectors.node_resolver import NodeResolver
+from security.collectors.waf_collector import WAFCollector
 
 _WAF_BASE = "http://fake-waf"
 _GF_YXD = "http://fake-gf-yxd"

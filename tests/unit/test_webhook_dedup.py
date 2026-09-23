@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 
-from kks_surfaces.webhook.dedup import (
+from surfaces.webhook.dedup import (
     _TTL_ANALYZED,
     _TTL_ANALYZING,
     _TTL_FAILED,
@@ -156,7 +156,7 @@ def test_status_none_after_expiry(monkeypatch):
     svc.mark_analyzed("a.com")
     # Capture the real value before patching, then return a frozen future time.
     future = time.monotonic() + _TTL_ANALYZED + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     assert svc.status("a.com") == "none"
 
 
@@ -170,7 +170,7 @@ def test_expired_analyzing_record_evicted(monkeypatch):
     svc = _svc()
     svc.try_start("a.com")
     future = time.monotonic() + _TTL_ANALYZING + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     # After expiry, the entity should be allowed to start again
     assert svc.try_start("a.com") is True
 
@@ -180,7 +180,7 @@ def test_expired_analyzed_record_allows_restart(monkeypatch):
     svc.try_start("a.com")
     svc.mark_analyzed("a.com")
     future = time.monotonic() + _TTL_ANALYZED + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     assert svc.try_start("a.com") is True
 
 
@@ -189,7 +189,7 @@ def test_expired_failed_record_allows_restart(monkeypatch):
     svc.try_start("a.com")
     svc.mark_failed("a.com")
     future = time.monotonic() + _TTL_FAILED + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     assert svc.try_start("a.com") is True
 
 
@@ -201,7 +201,7 @@ def test_eviction_does_not_restore_concurrent_count(monkeypatch):
     svc.try_start("a.com")  # count = 1
     # Simulate crash: record expires without mark_analyzed/mark_failed
     future = time.monotonic() + _TTL_ANALYZING + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     svc._evict_expired()
     # Count is NOT auto-decremented by eviction (no explicit decrement there).
     # try_start should still work because the slot was released via eviction;
@@ -229,7 +229,7 @@ def test_full_lifecycle_try_analyze_retry_after_ttl(monkeypatch):
 
     # After TTL: allowed
     future = time.monotonic() + _TTL_ANALYZED + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     assert svc.try_start("x.com") is True
     assert svc.status("x.com") == "analyzing"
 
@@ -245,5 +245,5 @@ def test_full_lifecycle_fail_and_retry_after_ttl(monkeypatch):
     assert svc.try_start("x.com") is False
 
     future = time.monotonic() + _TTL_FAILED + 1
-    monkeypatch.setattr("kks_surfaces.webhook.dedup.time.monotonic", lambda: future)
+    monkeypatch.setattr("surfaces.webhook.dedup.time.monotonic", lambda: future)
     assert svc.try_start("x.com") is True

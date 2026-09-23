@@ -1,4 +1,4 @@
-from kks_security.schemas.findings import LogFindings, MachineFindings, SecurityFindings
+from security.schemas.findings import LogFindings, MachineFindings, SecurityFindings
 
 
 def test_log_findings_defaults():

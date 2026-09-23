@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document captures the architectural position behind `kks-next`.
+This document captures the architectural position behind `sec-investigator`.
 
 It is not a product pitch. It is a design statement about how the system should be understood, what problems it is trying to solve, and why the current rewrite direction is structurally different from the old KKS approach.
 
@@ -10,7 +10,7 @@ The goal is to build an enterprise-grade security agent system with open-source-
 
 ## Position Summary
 
-`kks-next` is not a generic multi-agent system. It is a unified, state-driven investigation runtime built on LangGraph.
+`sec-investigator` is not a generic multi-agent system. It is a unified, state-driven investigation runtime built on LangGraph.
 
 LangGraph is used as the execution substrate, not as the business brain.
 
@@ -26,7 +26,7 @@ Freedom is only valid inside a bounded graph.
 
 ## Core Position
 
-`kks-next` should not be understood as a generic "AI agent application."
+`sec-investigator` should not be understood as a generic "AI agent application."
 
 It should be understood as a bounded investigation runtime for security and operations scenarios, where:
 
@@ -70,7 +70,7 @@ From `Hermes`, the key learning was hierarchical governance, skill systems, and 
 
 From LangGraph, the key value is different again: it provides a strong runtime scaffold, established patterns, and reusable packages that remove a large amount of low-value foundational engineering effort. That allows more focus on the actual architectural problem: how to map domain business boundaries into explicit system boundaries.
 
-## What `kks-next` Is Actually Building
+## What `sec-investigator` Is Actually Building
 
 The rewrite should be understood through this formula:
 
@@ -136,7 +136,7 @@ That made routing:
 - more expensive
 - more sensitive to prompt drift
 
-This is one of the most important architectural corrections in `kks-next`:
+This is one of the most important architectural corrections in `sec-investigator`:
 
 - the LLM should generate or refine `agent_task`
 - routing itself should be code-driven and policy-driven
@@ -216,7 +216,7 @@ But they are radically different in:
 
 This is why the rewrite is not just a refactor. It is a correction in runtime philosophy.
 
-## Is `kks-next` Single-Agent or Multi-Agent?
+## Is `sec-investigator` Single-Agent or Multi-Agent?
 
 Strictly speaking, the current system is best described as:
 
@@ -267,7 +267,7 @@ That is healthier than pursuing a multi-agent identity for its own sake.
 
 It is important to be precise about the current maturity level.
 
-`kks-next` is using LangGraph correctly at the foundational level, but not yet deeply at the advanced orchestration level.
+`sec-investigator` is using LangGraph correctly at the foundational level, but not yet deeply at the advanced orchestration level.
 
 Today it is already aligned with:
 
@@ -368,7 +368,7 @@ The real change is this:
 
 **the system is being transformed from a collection of parallel workflows into a unified, state-machine-driven, domain-bounded investigation runtime**
 
-This is the real architectural value of `kks-next`.
+This is the real architectural value of `sec-investigator`.
 
 And the right final principle is:
 

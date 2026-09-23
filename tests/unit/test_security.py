@@ -6,14 +6,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from kks_security.adapters.cc import CCAdapter, PointStatus
-from kks_security.adapters.ddos import DDoSAdapter
-from kks_security.collectors.gf_collector import GFCollector, GFNode
-from kks_security.collectors.node_resolver import NodeResolver
-from kks_security.collectors.waf_collector import WAFCollector, WAFNode
-from kks_security.rag.engine import RAGEngine
-from kks_security.rag.rag_tools import _make_rag_tools
-from kks_security.tools.security_tools import (
+from security.adapters.cc import CCAdapter, PointStatus
+from security.adapters.ddos import DDoSAdapter
+from security.collectors.gf_collector import GFCollector, GFNode
+from security.collectors.node_resolver import NodeResolver
+from security.collectors.waf_collector import WAFCollector, WAFNode
+from security.rag.engine import RAGEngine
+from security.rag.rag_tools import _make_rag_tools
+from security.tools.security_tools import (
     _is_cc_attack,
     _is_ddos_attack,
     _make_security_tools,

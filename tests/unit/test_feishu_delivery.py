@@ -1,7 +1,7 @@
 """Unit tests for Feishu delivery adapter."""
 
-from kks_security.schemas.report import InvestigationReport
-from kks_surfaces.feishu.delivery import report_to_feishu_payload
+from security.schemas.report import InvestigationReport
+from surfaces.feishu.delivery import report_to_feishu_payload
 
 
 def _make_report(**kwargs) -> InvestigationReport:
@@ -97,7 +97,7 @@ def test_critical_status_gives_red_card():
 
 def test_unknown_status_gives_blue_card():
     """An unrecognised status string falls back to blue."""
-    from kks_surfaces.feishu.delivery import _card_color
+    from surfaces.feishu.delivery import _card_color
 
     assert _card_color("something_else") == "blue"
 

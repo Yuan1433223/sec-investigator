@@ -4,13 +4,13 @@ Last updated: 2026-04-27.
 
 ## Review Position
 
-This review holds `kks-next` to a foundation-grade standard, not only an enterprise-delivery standard. The codebase should be built with the discipline required to survive future rewrites — or make them unnecessary.
+This review holds `sec-investigator` to a foundation-grade standard, not only an enterprise-delivery standard. The codebase should be built with the discipline required to survive future rewrites — or make them unnecessary.
 
 ## Executive Summary
 
-`kks-next` is directionally strong:
+`sec-investigator` is directionally strong:
 
-- Clean three-layer split (`kks_runtime` / `kks_security` / `kks_surfaces`)
+- Clean three-layer split (`runtime` / `security` / `surfaces`)
 - Typed state, event, finding, artifact, and report contracts
 - Model-profile abstraction — no vendor lock-in in business code
 - Deterministic supervisor routing — pure code, LLM generates tasks only
@@ -27,7 +27,7 @@ The project is a credible foundation candidate, not yet a foundation. That disti
 
 | Area | Evidence |
 |------|----------|
-| Layering | `kks_runtime` never imports from `kks_surfaces` — *except one violation listed below* |
+| Layering | `runtime` never imports from `surfaces` — *except one violation listed below* |
 | Provider abstraction | `build_model(profile)` — no vendor SDK in business code |
 | Supervisor routing | `_next_worker` pure-code dispatch; `target_type == "ip"` gate on `machine_check` |
 | Tool tracing | `make_traced_tools()` wraps all workers |
@@ -55,7 +55,7 @@ The project is a credible foundation candidate, not yet a foundation. That disti
    - `node_product` — both → dispatch both workers
 5. Supervisor dispatches workers **per IP, per type** — not blindly by target presence.
 
-**kks-next current state**
+**sec-investigator current state**
 
 `collectors/node_resolver.py`, `waf_collector.py`, `gf_collector.py` exist but are not wired as a graph node. Eligibility check is on raw user input (`target_type == "ip"`), not on resolved `NodeMachine.type`.
 
@@ -87,7 +87,7 @@ Supervisor routes workers based on `inspection_scope[i].type`, not on raw `targe
 
 ### 2. Hard attack thresholds live only in prompts
 
-Old KKS encodes these as explicit code conditions in `tools/` clients. kks-next references them only in playbook system prompts. A prompt is not a policy.
+Old KKS encodes these as explicit code conditions in `tools/` clients. sec-investigator references them only in playbook system prompts. A prompt is not a policy.
 
 | Signal | Threshold | Required location |
 |--------|-----------|-------------------|
@@ -101,15 +101,15 @@ Old KKS encodes these as explicit code conditions in `tools/` clients. kks-next 
 
 ---
 
-### 3. Reporter imports from `kks_surfaces` — CLAUDE.md §Hard rules §5 violation
+### 3. Reporter imports from `surfaces` — CLAUDE.md §Hard rules §5 violation
 
-`kks_runtime/graph/nodes/reporter.py` line 27:
+`runtime/graph/nodes/reporter.py` line 27:
 
 ```python
-from kks_surfaces.feishu.delivery import send_report_to_feishu
+from surfaces.feishu.delivery import send_report_to_feishu
 ```
 
-`kks_runtime` must not depend on `kks_surfaces`. This breaks both the layer contract and hard rule 5 ("Do not place HTTP/webhook/Feishu logic inside graph node business code").
+`runtime` must not depend on `surfaces`. This breaks both the layer contract and hard rule 5 ("Do not place HTTP/webhook/Feishu logic inside graph node business code").
 
 **Required action:** Remove the Feishu call from `reporter_node`. Reporter emits `FinalEvent`. Surface layer subscribes to `FinalEvent` and drives Feishu delivery independently. Two-line removal from `reporter.py`, corresponding addition in a `feishu_dispatcher` surface hook.
 
@@ -173,7 +173,7 @@ This is currently recorded as a Phase 5 todo item. It remains open.
 
 - Worker routing is capability-safe and typed by `NodeMachine.type`, not raw target string
 - All hard thresholds are code, not prompts
-- Layer boundaries are clean: `kks_runtime` imports nothing from `kks_surfaces`
+- Layer boundaries are clean: `runtime` imports nothing from `surfaces`
 - Failure modes are normalized into typed platform events, not unhandled exceptions
 - Integration test passes against real adapters
 - Cross-model evaluation exists for key profiles

@@ -1,7 +1,7 @@
 
 from pydantic import TypeAdapter
 
-from kks_runtime.events.protocol import (
+from runtime.events.protocol import (
     ArtifactEvent,
     ErrorEvent,
     FinalEvent,
