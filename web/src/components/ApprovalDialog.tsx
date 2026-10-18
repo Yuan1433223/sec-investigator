@@ -1,3 +1,6 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { ApprovalRequestEvent } from "../types";
 
 interface Props {
@@ -12,20 +15,18 @@ export function ApprovalDialog({ request, onDecide }: Props) {
   );
 
   return (
-    <div className="modal-mask">
-      <div className="modal" role="dialog" aria-modal="true">
-        <div className="modal-head">
-          <h3>人工审批</h3>
-          <span className="tag">{highRisk ? "高危事件" : "需确认"}</span>
-        </div>
-        <div className="modal-body">
-          <p className="pending">
-            调查发现疑似高危事件，已暂停在审批门。请确认是否继续生成最终报告。
-          </p>
-          <div className="modal-summary">
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onDecide(false); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>人工审批</DialogTitle>
+          {highRisk && <Badge variant="critical">高危事件</Badge>}
+        </DialogHeader>
+        <div className="text-sm text-zinc-400 space-y-2">
+          <p>调查发现疑似高危事件，已暂停在审批门。请确认是否继续生成最终报告。</p>
+          <div className="rounded-lg border border-white/10 bg-[#16161a] p-3 text-xs space-y-2">
             {findings.map((f, i) => (
-              <div key={i} style={{ marginBottom: i < findings.length - 1 ? 6 : 0 }}>
-                <strong>{f.dimension ?? f.node_name ?? "发现"}</strong>
+              <div key={i}>
+                <strong className="text-zinc-200">{f.dimension ?? f.node_name ?? "发现"}</strong>
                 {" · 风险 "}
                 <em>{f.risk_level ?? "low"}</em>
                 {f.summary ? ` — ${f.summary}` : ""}
@@ -33,15 +34,11 @@ export function ApprovalDialog({ request, onDecide }: Props) {
             ))}
           </div>
         </div>
-        <div className="modal-actions">
-          <button type="button" className="btn ghost" onClick={() => onDecide(false)}>
-            拒绝
-          </button>
-          <button type="button" className="btn" onClick={() => onDecide(true)}>
-            批准并继续
-          </button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onDecide(false)}>拒绝</Button>
+          <Button onClick={() => onDecide(true)}>批准并继续</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

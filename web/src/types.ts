@@ -31,7 +31,9 @@ export interface ToolCallEvent {
   type: "tool_call";
   node: string;
   tool_name: string;
-  tool_input: unknown;
+  tool_input: Record<string, unknown>;
+  /** subgraph namespace scope (optional, for lane grouping) */
+  scope?: string[];
 }
 
 export interface ToolResultEvent {
@@ -39,6 +41,8 @@ export interface ToolResultEvent {
   node: string;
   tool_name: string;
   output: unknown;
+  /** subgraph namespace scope (optional, for lane grouping) */
+  scope?: string[];
 }
 
 export interface ArtifactEvent {

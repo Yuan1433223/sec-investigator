@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { newSessionId, resumeInvestigation, startInvestigation } from "../api";
+import { mapToAGUI } from "../lib/agui";
 import type {
   ApprovalRequestEvent,
   FindingsMap,
@@ -15,6 +16,14 @@ export interface LogEntry {
   node: string;
   message: string;
   tool?: string;
+  /** tool input summary for tool cards */
+  toolInput?: Record<string, unknown>;
+  /** extracted asset label (IP / hostname / domain) */
+  asset?: string;
+  /** tool call completed */
+  done?: boolean;
+  /** short summary of tool output */
+  outputSummary?: string;
 }
 
 export function useInvestigation() {
@@ -43,48 +52,99 @@ export function useInvestigation() {
     [],
   );
 
+  /** Extract a short asset label from tool_input (instance / ips / query_by / value). */
+  const extractAsset = (input: Record<string, unknown> | undefined): string | undefined => {
+    if (!input) return undefined;
+    const ipv4Re = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/;
+    const inst = input.instance;
+    if (typeof inst === "string" && inst) {
+      const m = inst.match(ipv4Re);
+      if (m) return m[1];
+      const segs = inst.split(":");
+      return segs[segs.length - 1] || inst;
+    }
+    const ips = input.ips;
+    if (Array.isArray(ips) && ips.length > 0) return String(ips[0]);
+    const qb = input.query_by ?? input.value;
+    if (typeof qb === "string" && qb) return qb;
+    return undefined;
+  };
+
+  /** Find the most recent matching tool_call entry to mark done. */
+  const markToolDone = (_node: string, toolName: string, output: unknown) => {
+    setEntries((prev) => {
+      // Find last matching tool entry that isn't done yet
+      for (let i = prev.length - 1; i >= 0; i--) {
+        const e = prev[i];
+        if (e.kind === "tool" && e.tool === toolName && !e.done) {
+          const updated = [...prev];
+          updated[i] = { ...e, done: true, outputSummary: summarizeOutput(output) };
+          return updated;
+        }
+      }
+      return prev;
+    });
+  };
+
+  const summarizeOutput = (out: unknown): string => {
+    if (out == null) return "";
+    try {
+      const s = typeof out === "string" ? out : JSON.stringify(out);
+      return s.length > 120 ? s.slice(0, 120) + "…" : s;
+    } catch {
+      return "";
+    }
+  };
+
   const handleEvent = useCallback(
     (ev: RuntimeEvent) => {
-      switch (ev.type) {
-        case "status":
-          setActiveNode(ev.node);
-          addEntry({ kind: "status", node: ev.node, message: ev.message });
+      // AG-UI adapter layer: all event dispatch goes through mapped AG-UI types
+      const ag = mapToAGUI(ev, sessionId || "run");
+      if (!ag) return;
+      // eslint-disable-next-line no-console
+      console.debug("[AG-UI]", ag.type);
+
+      switch (ag.type) {
+        case "STEP_STARTED":
+          setActiveNode(ag.stepId ?? null);
+          addEntry({ kind: "status", node: ag.stepId ?? "unknown", message: ag.message ?? "" });
           break;
-        case "tool_call":
+        case "TOOL_CALL_START":
           addEntry({
             kind: "tool",
-            node: ev.node,
-            tool: ev.tool_name,
+            node: ag.stepId ?? "unknown",
+            tool: ag.toolName ?? "unknown",
             message: "调用工具",
+            toolInput: ag.input as Record<string, unknown> | undefined,
+            asset: extractAsset(ag.input as Record<string, unknown> | undefined),
+            done: false,
           });
           break;
-        case "final":
-          setFinalReport(ev);
-          setFindings(ev.findings);
-          setActiveNode(null);
-          if (!waitingRef.current) setPhase("done");
+        case "TOOL_CALL_END":
+          markToolDone("", ag.toolName ?? "", ag.output);
           break;
-        case "approval_request":
-          setApprovalReq(ev);
-          setFindings(ev.findings);
-          waitingRef.current = true;
-          setPhase("waiting_approval");
-          break;
-        case "error":
-          setError(ev.message);
-          setPhase("error");
-          break;
-        case "done":
-          if (!waitingRef.current && phase !== "error") {
+        case "STATE_SNAPSHOT":
+          if (ag.findings) setFindings(ag.findings);
+          if (ag.finalReport) {
+            setFinalReport(ag.finalReport);
             setActiveNode(null);
-            setPhase((p) => (p === "running" ? "done" : p));
+            if (!waitingRef.current) setPhase("done");
           }
+          if (ag.approvalReq) {
+            setApprovalReq(ag.approvalReq);
+            waitingRef.current = true;
+            setPhase("waiting_approval");
+          }
+          break;
+        case "ERROR":
+          setError(ag.message ?? "未知错误");
+          setPhase("error");
           break;
         default:
           break;
       }
     },
-    [addEntry, phase],
+    [addEntry, sessionId],
   );
 
   const start = useCallback(
