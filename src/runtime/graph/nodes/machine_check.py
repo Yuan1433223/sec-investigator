@@ -26,8 +26,9 @@ from runtime.llm.profiles import ModelProfile, build_model
 from runtime.state.session import SessionState
 from security.playbooks.catalog import PlaybookKind, get_playbook
 from security.policies.evidence import default_policy
+from security.policies.extraction import EvidenceCollector
 from security.schemas.findings import MachineFindings
-from security.tools.prom_tools import PROM_TOOLS
+from security.tools.prom_tools import get_prom_tools
 
 _PLAYBOOK = get_playbook(PlaybookKind.INFRA_DIAGNOSIS)
 _RECURSION_LIMIT = _PLAYBOOK.max_tool_calls * 2 + 1
@@ -46,8 +47,14 @@ async def machine_check_node(state: SessionState) -> dict:
     task = state.get("agent_task") or f"Check infrastructure for {state.get('target', 'unknown')}"
 
     llm = build_model(_PLAYBOOK.model_profile)
-    traced_tools = make_traced_tools(PROM_TOOLS, "machine_check")
-    agent = create_react_agent(model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt)
+    collector = EvidenceCollector("machine")
+    traced_tools = make_traced_tools(
+        get_prom_tools(), "machine_check", evidence_sink=collector.observe
+    )
+    agent = create_react_agent(
+        model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt,
+        name="machine_check",
+    )
 
     resp = await ainvoke_react_agent(
         agent,
@@ -64,17 +71,34 @@ async def machine_check_node(state: SessionState) -> dict:
         required_capabilities=("prom",),
     )
 
+    # Deterministic telemetry from the Prometheus tools actually called.
+    evidence = collector.extract_machine()
+
     if resp is None:
-        # Graceful degradation: deterministic partial finding instead of crash.
+        # Graceful degradation: deterministic partial finding enriched with the
+        # real metrics observed before the budget ran out (no longer hard-coded low).
+        has_evidence = any(v is not None for v in evidence.values())
         findings_dict = {
-            "summary": "基础设施检查未能在工具预算内收敛，指标无法采集。",
+            "summary": (
+                "基础设施检查在工具预算内未完全收敛，已采集部分指标。"
+                if has_evidence else
+                "基础设施检查在工具预算内未收敛，未采集到有效指标。"
+            ),
             "connectivity": "unknown",
             "system_metrics": "无数据",
             "tcp_status": "无数据",
             "health_status": "degraded",
             "risk_level": "low",
-            "analysis_text": "基础设施检查未收敛，未得出可靠指标。",
+            "analysis_text": (
+                "基础设施检查未完全收敛，已记录关键指标。"
+                if has_evidence else
+                "基础设施检查未完全收敛，且未采集到有效工具数据。"
+            ),
         }
+        for key, value in evidence.items():
+            if value is not None:
+                findings_dict[key] = value
+        findings_dict["risk_level"] = default_policy().classify_machine(findings_dict)
         write(StatusEvent(node="machine_check", message="Infrastructure check complete (partial)"))
         result = {
             "messages": [],
@@ -91,15 +115,23 @@ async def machine_check_node(state: SessionState) -> dict:
     analysis_text: str = resp["messages"][-1].content
 
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
-    findings: MachineFindings = await extractor.with_structured_output(
-        MachineFindings,
-        method="function_calling"
-    ).ainvoke(
-        f"用简体中文填写所有字段内容。Extract structured machine findings from this infrastructure analysis:\n\n{analysis_text}"
-    )
+    try:
+        findings: MachineFindings = await extractor.with_structured_output(
+            MachineFindings,
+            method="function_calling"
+        ).ainvoke(
+            f"用简体中文填写所有字段内容。Extract structured machine findings from this infrastructure analysis:\n\n{analysis_text}"
+        )
+        if findings is None:
+            findings = MachineFindings.model_construct()
+    except Exception:
+        findings = MachineFindings.model_construct()
 
     # Deterministic risk_level override — code-level policy, not LLM judgement.
     findings_dict = findings.model_dump()
+    for key, value in evidence.items():
+        if value is not None:
+            findings_dict[key] = value
     findings_dict["risk_level"] = default_policy().classify_machine(findings_dict)
 
     write(StatusEvent(node="machine_check", message="Infrastructure check complete"))

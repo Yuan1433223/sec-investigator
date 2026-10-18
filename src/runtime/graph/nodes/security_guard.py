@@ -26,17 +26,13 @@ from runtime.llm.profiles import ModelProfile, build_model
 from runtime.state.session import SessionState
 from security.playbooks.catalog import PlaybookKind, get_playbook
 from security.policies.evidence import default_policy
+from security.policies.extraction import EvidenceCollector
 from security.schemas.findings import SecurityFindings
-from security.tools.public_tools import check_connection_status, current_time
-from security.tools.security_tools import SECURITY_TOOLS
+from security.tools.public_tools import check_connection_status
+from security.tools.security_tools import get_security_tools
 
 _PLAYBOOK = get_playbook(PlaybookKind.ATTACK_ANALYSIS)
 _RECURSION_LIMIT = _PLAYBOOK.max_tool_calls * 2 + 1
-
-# Security tools + network reachability + time anchor.
-# check_connection_status: ping CDN nodes / origin IPs to confirm connectivity.
-# current_time: used to anchor relative time windows for CC/DDoS queries.
-_SECURITY_TOOLS = SECURITY_TOOLS + [check_connection_status, current_time]
 
 
 def _annotate_operational_issue(findings: dict) -> None:
@@ -95,8 +91,15 @@ async def security_guard_node(state: SessionState) -> dict:
     )
 
     llm = build_model(_PLAYBOOK.model_profile)
-    traced_tools = make_traced_tools(_SECURITY_TOOLS, "security_guard")
-    agent = create_react_agent(model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt)
+    collector = EvidenceCollector("security")
+    security_tools = get_security_tools() + [check_connection_status]
+    traced_tools = make_traced_tools(
+        security_tools, "security_guard", evidence_sink=collector.observe
+    )
+    agent = create_react_agent(
+        model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt,
+        name="security_guard",
+    )
     resp = await ainvoke_react_agent(
         agent,
         [HumanMessage(content=task)],
@@ -112,21 +115,39 @@ async def security_guard_node(state: SessionState) -> dict:
         required_capabilities=("cc", "ddos"),
     )
 
+    # Deterministic attack flags from the CC/DDoS tools actually called.
+    evidence = collector.extract_security()
+
     if resp is None:
-        # Graceful degradation: don't crash the investigation when the model
-        # cannot converge within the tool budget. Deterministic partial finding.
+        # Graceful degradation: don't crash the investigation. Deterministic
+        # partial finding enriched with observed attack flags (no longer hard-coded low).
+        has_evidence = any(v is not None for v in evidence.values())
         findings_dict = {
-            "summary": "安全防护检查未能在工具预算内收敛，防护状态无法采集。",
+            "summary": (
+                "安全防护检查在工具预算内未完全收敛，已采集部分防护数据。"
+                if has_evidence else
+                "安全防护检查在工具预算内未收敛，未采集到有效防护数据。"
+            ),
             "cc_status": "no_data",
             "ddos_status": "no_data",
             "protection_status": "incomplete",
             "risk_level": "low",
-            "analysis_text": "安全防护检查未收敛，未得出可靠的 CC/DDoS 状态。",
+            "analysis_text": (
+                "安全防护检查未完全收敛，已记录关键防护指标。"
+                if has_evidence else
+                "安全防护检查未完全收敛，且未采集到有效工具数据。"
+            ),
             "operational_issue": "coverage_gap",
             "operational_issue_detail": (
-                "模型未能在工具预算内收敛，防护状态无法采集。"
+                "模型未在工具预算内完全收敛，已基于实际工具返回数据评估。"
+                if has_evidence else
+                "模型未在工具预算内收敛，且未采集到有效工具数据。"
             ),
         }
+        for key, value in evidence.items():
+            if value is not None:
+                findings_dict[key] = value
+        findings_dict["risk_level"] = default_policy().classify_security(findings_dict)
         write(StatusEvent(node="security_guard", message="Security check complete (partial)"))
         result = {
             "messages": [],
@@ -143,16 +164,24 @@ async def security_guard_node(state: SessionState) -> dict:
     analysis_text: str = resp["messages"][-1].content
 
     extractor = build_model(ModelProfile.STRUCTURED_EXTRACTOR)
-    findings: SecurityFindings = await extractor.with_structured_output(
-        SecurityFindings,
-        method="function_calling"
-    ).ainvoke(
-        "用简体中文填写所有字段内容。Extract structured security findings from this protection status"
-        f" analysis:\n\n{analysis_text}"
-    )
+    try:
+        findings: SecurityFindings = await extractor.with_structured_output(
+            SecurityFindings,
+            method="function_calling"
+        ).ainvoke(
+            "用简体中文填写所有字段内容。Extract structured security findings from this protection status"
+            f" analysis:\n\n{analysis_text}"
+        )
+        if findings is None:
+            findings = SecurityFindings.model_construct()
+    except Exception:
+        findings = SecurityFindings.model_construct()
 
     # Deterministic risk_level override — code-level policy, not LLM judgement.
     findings_dict = findings.model_dump()
+    for key, value in evidence.items():
+        if value is not None:
+            findings_dict[key] = value
     findings_dict["risk_level"] = default_policy().classify_security(findings_dict)
     _annotate_operational_issue(findings_dict)
 
