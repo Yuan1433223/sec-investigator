@@ -30,7 +30,7 @@ Implementation note:
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.config import get_stream_writer
@@ -38,9 +38,19 @@ from langgraph.errors import GraphRecursionError
 
 from runtime.events.protocol import StatusEvent, ToolCallEvent, ToolResultEvent
 
+# A sink that receives the raw (pre-sentinel) tool result on every invocation.
+# Used to feed deterministic evidence extraction so numbers survive even when
+# ReAct later raises GraphRecursionError and no final messages are returned.
+EvidenceSink = Callable[[str, Any], None]
+
 _EARLY_STOP_TEMPLATE = (
     "[EARLY_STOP: {n} consecutive tool calls returned empty or zero results. "
     "Insufficient data for this target. Stop calling tools and summarize findings so far.]"
+)
+
+_LOOP_STOP_TEMPLATE = (
+    "[LOOP_STOP: same tool called {n} consecutive times. "
+    "Stop and summarize findings so far.]"
 )
 
 
@@ -129,22 +139,37 @@ def make_traced_tools(
     node_name: str,
     *,
     max_empty: int = 3,
+    max_repeated: int = 4,
+    evidence_sink: EvidenceSink | None = None,
 ) -> list[BaseTool]:
     """
     Return a new list of tools whose invocations emit ToolCallEvent and
     ToolResultEvent on the current stream writer.
 
-    All tools in the returned list share one empty-result counter per factory
-    call (across all tool types for the same worker invocation).
+    All tools in the returned list share one empty-result counter and one
+    repeated-call counter per factory call (across all tool types for the same
+    worker invocation).
 
     Args:
         tools: The original tool list to wrap.
         node_name: Used in event payloads to identify the emitting worker.
         max_empty: Consecutive empty-result threshold that triggers early-stop.
                    Set to 0 to disable. Tests should pass max_empty=0.
+        max_repeated: Consecutive same-tool-call threshold that triggers loop-stop.
+                   Set to 0 to disable. Prevents the LLM from burning the whole
+                   recursion budget on a single no-op tool (e.g. current_time).
+        evidence_sink: Optional callable ``(tool_name, raw_result)`` invoked with
+                   the *raw* tool result before any sentinel is substituted.
+                   Used to feed deterministic evidence extraction so numeric
+                   telemetry is captured even if ReAct later exhausts its budget.
     """
     consecutive_empty: list[int] = [0]
-    return [_traced(tool, node_name, consecutive_empty, max_empty) for tool in tools]
+    repeated_state: list[Any] = [0, None]  # [count, last_tool_name]
+    return [
+        _traced(tool, node_name, consecutive_empty, max_empty,
+                max_repeated, repeated_state, evidence_sink)
+        for tool in tools
+    ]
 
 
 def _traced(
@@ -152,6 +177,9 @@ def _traced(
     node_name: str,
     consecutive_empty: list[int],
     max_empty: int,
+    max_repeated: int,
+    repeated_state: list,
+    evidence_sink: EvidenceSink | None = None,
 ) -> BaseTool:
     """Wrap a single BaseTool with before/after event emission."""
     orig_coroutine = original.coroutine  # the underlying async callable
@@ -178,6 +206,28 @@ def _traced(
                 )
             )
             raise
+
+        # --- Feed deterministic evidence sink with the RAW result ----------
+        # Must happen BEFORE any sentinel substitution so the real telemetry is
+        # on record even when the LLM later sees a placeholder.
+        if evidence_sink is not None:
+            try:
+                evidence_sink(tool_name, result)
+            except Exception:  # pragma: no cover - evidence must never break the run
+                pass
+
+        # --- Consecutive same-tool loop-stop -------------------------------
+        # If the LLM calls the same tool repeatedly with non-empty results, it
+        # is burning the recursion budget on a no-op loop (e.g. current_time).
+        # Substitute a sentinel after max_repeated calls to force summarization.
+        if max_repeated > 0 and not _is_empty_result(result):
+            if repeated_state[1] == tool_name:
+                repeated_state[0] += 1
+            else:
+                repeated_state[0] = 1
+                repeated_state[1] = tool_name
+            if repeated_state[0] >= max_repeated:
+                result = _LOOP_STOP_TEMPLATE.format(n=repeated_state[0])
 
         # --- Empty-result early-stop ---
         if max_empty > 0:
