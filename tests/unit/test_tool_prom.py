@@ -205,7 +205,7 @@ async def test_query_instance_socket_no_data():
 
 
 def test_prom_tools_list_includes_new_tools():
-    from security.tools.prom_tools import PROM_TOOLS
-    names = {t.name for t in PROM_TOOLS}
+    from security.tools.prom_tools import get_prom_tools
+    names = {t.name for t in get_prom_tools()}
     assert "query_instance_disk" in names
     assert "query_instance_socket" in names

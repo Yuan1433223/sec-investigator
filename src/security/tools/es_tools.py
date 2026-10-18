@@ -85,17 +85,17 @@ def _make_es_tools(adapter: ESAdapter | None = None):
     """
     Factory that returns a list of ES tools bound to the given adapter.
 
-    If adapter is None the first tool call lazily creates one ESAdapter and
-    caches it in closure scope — all subsequent calls in the same factory
-    lifetime reuse the same connection pool.
+    If adapter is None, a default ESAdapter is created at factory scope and
+    stored in the module-level `_es_default_adapter` so it can be closed on
+    session shutdown. All tool closures share the same adapter instance.
     Pass a mock adapter in tests to avoid real ES connections.
     """
-    _cached: ESAdapter | None = adapter
+    global _es_default_adapter
+    _cached: ESAdapter = adapter if adapter is not None else ESAdapter()
+    if adapter is None:
+        _es_default_adapter = _cached
 
     async def _adapter() -> ESAdapter:
-        nonlocal _cached
-        if _cached is None:
-            _cached = ESAdapter()
         return _cached
 
     @tool
@@ -712,5 +712,22 @@ def _make_es_tools(adapter: ESAdapter | None = None):
     ]
 
 
-# Default tool list (no injected adapter — uses ESAdapter from settings)
-ES_TOOLS = _make_es_tools()
+# Lazy-init factory: returns the cached tool list, creating it on first use.
+# The default adapter is stored in _es_default_adapter and closed on session exit.
+_es_tools_cache: list | None = None
+_es_default_adapter: ESAdapter | None = None
+
+
+def get_es_tools() -> list:
+    global _es_tools_cache
+    if _es_tools_cache is None:
+        _es_tools_cache = _make_es_tools()
+    return _es_tools_cache
+
+
+async def aclose_es_adapters() -> None:
+    """Close the default ES adapter if it exists. Idempotent."""
+    global _es_default_adapter
+    if _es_default_adapter is not None:
+        await _es_default_adapter.aclose()
+        _es_default_adapter = None

@@ -71,41 +71,41 @@ def _make_security_tools(
     waf_collector: WAFCollector | None = None,
     node_resolver: NodeResolver | None = None,
 ):
-    """Return list of security LangChain tools with injected adapters."""
-    _cc = cc_adapter
-    _ddos = ddos_adapter
-    _gf = gf_collector
-    _waf = waf_collector
-    _nr = node_resolver
+    """Return list of security LangChain tools with injected adapters.
+
+    When adapters are None, they are created eagerly at factory scope and stored
+    in module-level variables for session-exit cleanup.
+    """
+    global _sec_default_cc, _sec_default_ddos, _sec_default_gf, _sec_default_waf, _sec_default_nr
+    _cc = cc_adapter if cc_adapter is not None else CCAdapter()
+    _ddos = ddos_adapter if ddos_adapter is not None else DDoSAdapter()
+    _gf = gf_collector if gf_collector is not None else GFCollector()
+    _waf = waf_collector if waf_collector is not None else WAFCollector()
+    _nr = node_resolver if node_resolver is not None else NodeResolver()
+    if cc_adapter is None:
+        _sec_default_cc = _cc
+    if ddos_adapter is None:
+        _sec_default_ddos = _ddos
+    if gf_collector is None:
+        _sec_default_gf = _gf
+    if waf_collector is None:
+        _sec_default_waf = _waf
+    if node_resolver is None:
+        _sec_default_nr = _nr
 
     def _get_cc() -> CCAdapter:
-        nonlocal _cc
-        if _cc is None:
-            _cc = CCAdapter()
         return _cc
 
     def _get_ddos() -> DDoSAdapter:
-        nonlocal _ddos
-        if _ddos is None:
-            _ddos = DDoSAdapter()
         return _ddos
 
     def _get_gf() -> GFCollector:
-        nonlocal _gf
-        if _gf is None:
-            _gf = GFCollector()
         return _gf
 
     def _get_waf() -> WAFCollector:
-        nonlocal _waf
-        if _waf is None:
-            _waf = WAFCollector()
         return _waf
 
     def _get_nr() -> NodeResolver:
-        nonlocal _nr
-        if _nr is None:
-            _nr = NodeResolver()
         return _nr
 
     @tool
@@ -231,6 +231,27 @@ def _make_security_tools(
     ]
 
 
-# Module-level default tool list — constructed lazily on first access.
-# Workers import SECURITY_TOOLS; tests use _make_security_tools() with mocks.
-SECURITY_TOOLS = _make_security_tools()
+# Lazy-init factory: cached on first use.
+_security_tools_cache: list | None = None
+_sec_default_cc: CCAdapter | None = None
+_sec_default_ddos: DDoSAdapter | None = None
+_sec_default_gf: GFCollector | None = None
+_sec_default_waf: WAFCollector | None = None
+_sec_default_nr: NodeResolver | None = None
+
+
+def get_security_tools() -> list:
+    global _security_tools_cache
+    if _security_tools_cache is None:
+        _security_tools_cache = _make_security_tools()
+    return _security_tools_cache
+
+
+async def aclose_security_adapters() -> None:
+    """Close all default security adapters. Idempotent."""
+    global _sec_default_cc, _sec_default_ddos, _sec_default_gf, _sec_default_waf, _sec_default_nr
+    for adapter_attr in ("_sec_default_cc", "_sec_default_ddos", "_sec_default_gf", "_sec_default_waf", "_sec_default_nr"):
+        adapter = globals().get(adapter_attr)
+        if adapter is not None and hasattr(adapter, "aclose"):
+            await adapter.aclose()
+            globals()[adapter_attr] = None

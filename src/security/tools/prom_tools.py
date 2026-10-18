@@ -36,16 +36,16 @@ def _make_prom_tools(adapter: PrometheusAdapter | None = None):
     """
     Factory returning a list of Prometheus tools bound to an adapter.
 
-    If adapter is None the first tool call lazily creates one PrometheusAdapter
-    and caches it in closure scope — subsequent calls reuse the same httpx client.
+    If adapter is None, a default PrometheusAdapter is created at factory scope
+    and stored in _prom_default_adapter for session-exit cleanup.
     Pass a mock adapter in tests to avoid real HTTP calls.
     """
-    _cached: PrometheusAdapter | None = adapter
+    global _prom_default_adapter
+    _cached: PrometheusAdapter = adapter if adapter is not None else PrometheusAdapter()
+    if adapter is None:
+        _prom_default_adapter = _cached
 
     async def _get() -> PrometheusAdapter:
-        nonlocal _cached
-        if _cached is None:
-            _cached = PrometheusAdapter()
         return _cached
 
     @tool
@@ -273,5 +273,21 @@ async def _gather(*coros: Any) -> tuple[Any, ...]:
     return tuple(await asyncio.gather(*coros))
 
 
-# Default tool list (no injected adapter — uses PrometheusAdapter from settings)
-PROM_TOOLS = _make_prom_tools()
+# Lazy-init factory: cached on first use.
+_prom_tools_cache: list | None = None
+_prom_default_adapter: PrometheusAdapter | None = None
+
+
+def get_prom_tools() -> list:
+    global _prom_tools_cache
+    if _prom_tools_cache is None:
+        _prom_tools_cache = _make_prom_tools()
+    return _prom_tools_cache
+
+
+async def aclose_prom_adapters() -> None:
+    """Close the default Prometheus adapter. Idempotent."""
+    global _prom_default_adapter
+    if _prom_default_adapter is not None:
+        await _prom_default_adapter.aclose()
+        _prom_default_adapter = None

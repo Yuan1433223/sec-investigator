@@ -167,23 +167,37 @@ def test_public_tools_has_four_tools():
 
 
 def test_security_guard_tool_list_includes_check_connection_status():
-    from runtime.graph.nodes.security_guard import _SECURITY_TOOLS
+    from security.tools.security_tools import get_security_tools
+    from security.tools.public_tools import check_connection_status
 
-    tool_names = {t.name for t in _SECURITY_TOOLS}
+    security_tools = get_security_tools() + [check_connection_status]
+    tool_names = {t.name for t in security_tools}
     assert "check_connection_status" in tool_names
 
 
-def test_security_guard_tool_list_includes_current_time():
-    from runtime.graph.nodes.security_guard import _SECURITY_TOOLS
+def test_security_guard_tool_list_excludes_current_time():
+    """current_time is deliberately excluded to prevent budget burn on time queries."""
+    from security.tools.security_tools import get_security_tools
+    from security.tools.public_tools import check_connection_status
 
-    tool_names = {t.name for t in _SECURITY_TOOLS}
-    assert "current_time" in tool_names
+    security_tools = get_security_tools() + [check_connection_status]
+    tool_names = {t.name for t in security_tools}
+    assert "current_time" not in tool_names
 
 
 def test_log_detective_tool_list_includes_table_tools():
-    from runtime.graph.nodes.log_detective import _LOG_TOOLS
+    from security.tools.es_tools import get_es_tools
+    from security.rag.rag_tools import get_rag_tools
+    from security.tools.public_tools import (
+        get_gf_log_table_structure,
+        get_waf_log_table_structure,
+    )
 
-    tool_names = {t.name for t in _LOG_TOOLS}
+    log_tools = get_es_tools() + get_rag_tools() + [
+        get_gf_log_table_structure,
+        get_waf_log_table_structure,
+    ]
+    tool_names = {t.name for t in log_tools}
     assert "get_gf_log_table_structure" in tool_names
     assert "get_waf_log_table_structure" in tool_names
-    assert "current_time" in tool_names
+    assert "current_time" not in tool_names

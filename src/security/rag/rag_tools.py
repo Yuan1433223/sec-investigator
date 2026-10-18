@@ -24,13 +24,17 @@ _MAX_RESULTS = 5
 
 
 def _make_rag_tools(engine: RAGEngine | None = None):
-    """Return list of RAG LangChain tools with injected engine."""
-    _engine = engine
+    """Return list of RAG LangChain tools with injected engine.
+
+    When engine is None, a default RAGEngine is created at factory scope and
+    stored in _rag_default_engine for session-exit cleanup.
+    """
+    global _rag_default_engine
+    _engine = engine if engine is not None else RAGEngine()
+    if engine is None:
+        _rag_default_engine = _engine
 
     def _get_engine() -> RAGEngine:
-        nonlocal _engine
-        if _engine is None:
-            _engine = RAGEngine()
         return _engine
 
     @tool
@@ -86,4 +90,21 @@ def _make_rag_tools(engine: RAGEngine | None = None):
     return [search_knowledge]
 
 
-RAG_TOOLS = _make_rag_tools()
+# Lazy-init factory: cached on first use.
+_rag_tools_cache: list | None = None
+_rag_default_engine: RAGEngine | None = None
+
+
+def get_rag_tools() -> list:
+    global _rag_tools_cache
+    if _rag_tools_cache is None:
+        _rag_tools_cache = _make_rag_tools()
+    return _rag_tools_cache
+
+
+async def aclose_rag_engine() -> None:
+    """Close the default RAG engine. Idempotent."""
+    global _rag_default_engine
+    if _rag_default_engine is not None and hasattr(_rag_default_engine, "aclose"):
+        await _rag_default_engine.aclose()
+        _rag_default_engine = None

@@ -465,8 +465,8 @@ async def test_query_customer_business_desc_es_error_returns_fallback():
 
 
 def test_es_tools_list_includes_new_tools():
-    from security.tools.es_tools import ES_TOOLS
-    names = {t.name for t in ES_TOOLS}
+    from security.tools.es_tools import get_es_tools
+    names = {t.name for t in get_es_tools()}
     assert "query_request_count" in names
     assert "query_status_code_distribution" in names
     assert "query_es_trend_comparison" in names

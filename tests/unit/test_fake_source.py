@@ -86,6 +86,47 @@ async def test_fake_es_status_distribution_4xx_dominant(fake_settings):
     assert cur_4xx > prev_4xx * 8, "4xx should spike vs the 30-min-prior baseline"
 
 
+@pytest.mark.asyncio
+async def test_fake_es_incident2_5xx_share_matches_narrative(fake_settings):
+    """P0-C regression: incident2 must return 502 ≈ 62.9% (total 5xx ≈ 70%),
+    matching fixtures.py:85 comment — not the mismatched ~22.9% the LLM once
+    derived by dividing across windows."""
+    tools = {t.name: t for t in _make_es_tools(ESAdapter(fake_settings))}
+    r = await tools["query_status_code_distribution"].ainvoke(
+        {
+            "query_by": "domain",
+            "value": "api2.xs2027.cn",
+            "start_time": "2026-04-18 12:18:00",
+            "end_time": "2026-04-18 12:36:00",
+        }
+    )
+    cur = {x["status"]: x["count"] for x in r["current"]}
+    total = sum(cur.values())
+    share_502 = cur.get(502, 0) / total
+    share_5xx = sum(v for k, v in cur.items() if 500 <= k < 600) / total
+    assert abs(share_502 - 0.629) < 0.02, f"502 share {share_502:.3f} != 0.629"
+    assert share_5xx >= 0.60, f"total 5xx share {share_5xx:.3f} too low"
+
+
+@pytest.mark.asyncio
+async def test_fake_es_incident1_4xx_share_crosses_critical_threshold(fake_settings):
+    """P0-C regression: incident1 4xx share must clear the critical 0.80 bar
+    (404 62% + 499 19% ≈ 81%)."""
+    tools = {t.name: t for t in _make_es_tools(ESAdapter(fake_settings))}
+    r = await tools["query_status_code_distribution"].ainvoke(
+        {
+            "query_by": "domain",
+            "value": "game.ali213.net",
+            "start_time": "2026-04-23 11:56:40",
+            "end_time": "2026-04-23 12:14:40",
+        }
+    )
+    cur = {x["status"]: x["count"] for x in r["current"]}
+    total = sum(cur.values())
+    share_4xx = sum(v for k, v in cur.items() if 400 <= k < 500) / total
+    assert share_4xx >= 0.80, f"4xx share {share_4xx:.3f} below critical threshold"
+
+
 # ---------------------------------------------------------------------------
 # Prometheus — node health consistent with the incident
 # ---------------------------------------------------------------------------
