@@ -2,149 +2,74 @@
 
 ## Scope
 
-This file governs work inside `sec-investigator`.
+`sec-investigator` — constrained-autonomy security investigation agent built on LangGraph 1.1.9.
 
-`sec-investigator` is a constrained-autonomy security investigation agent:
-a unified, state-driven investigation runtime built on LangGraph, layered as
-`runtime` / `security` / `surfaces`.
+Three layers: `runtime` / `security` / `surfaces`. `runtime` never imports `surfaces`.
 
-- built on released LangGraph packages
-- independent from local framework source trees
-- `KKShieldHelper-main` is the only donor/reference repo expected to sit beside it
+## Build & test
 
-Do not make this repo depend on any other sibling source tree being present.
-
-## Core architecture
-
-Three layers:
-
-1. **`runtime`** — LangGraph integration, session lifecycle, state schema, event
-   protocol, checkpointing, streaming, retries/timeouts, approvals (HITL),
-   artifact emission, model-runtime abstraction.
-2. **`security`** — security-domain tools; ES/Prometheus/WAF/GF adapters;
-   collectors; playbooks; policies; report generation; schemas; RAG/domain retrieval.
-3. **`surfaces`** — FastAPI surface, webhook adapters, Feishu delivery, web UI.
-   Surface code must remain thin. No core business logic belongs here.
-
-## Runtime graph rule
-
-Maintain one primary investigation graph:
-
-```
-START
-  → asset_resolution
-  → supervisor
-     → log_detective
-     → dispatch_machine_checks → Send(machine_check per asset) → machine_rollup
-     → dispatch_security_checks → Send(security_guard per asset) → security_rollup
-     → approval_gate
-     → reporter → END
+```bash
+uv sync
+uv run pytest -q          # 551 tests, fully offline
+cd web && npm run build    # frontend (tsc strict + vite)
+uv run sec-investigator    # dev server on :18230
 ```
 
-Use:
-- `inspection_scope` for resolved assets
-- `active_asset` for per-slice execution
-- `asset_findings` for per-asset evidence
-- top-level `findings` for rolled-up session conclusions
+External endpoints must always be mocked in tests. `DATA_SOURCE=fake` (default) injects `httpx.MockTransport` — no VPN, no enterprise systems.
 
-Do not let parallel asset workers race on the same top-level finding key.
-Asset-scoped writes must merge into `asset_findings` first, then roll up.
+## Code map
 
-## LangGraph usage rules
+```
+src/runtime/        # LangGraph graph, state, events, checkpoints, LLM profiles
+src/security/       # Adapters, tools, policies, schemas, playbooks, RAG
+src/surfaces/       # Thin FastAPI + SSE stream + hosted SPA
+web/                # React 19 + Vite + Tailwind v4 + shadcn/ui
+tests/              # unit / integration / replay (all offline)
+docs/REFERENCE.md   # Full interface inventory — read this before changing APIs
+```
 
-Use LangGraph as a runtime dependency, not as an embedded codebase.
+## Main investigation graph
 
-Allowed: `uv add langgraph==1.1.9`, checkpoint packages, normal imports
-(`from langgraph.graph import StateGraph`).
+```
+START → asset_resolution → supervisor
+   ├─→ log_detective (ES + RAG)
+   ├─→ dispatch_machine_checks → Send(machine_check per asset) → machine_rollup
+   ├─→ dispatch_security_checks → Send(security_guard per asset) → security_rollup
+   ├─→ approval_gate (HITL interrupt on critical)
+   └─→ reporter → END
+```
 
-Disallowed: copying framework code into this repo; depending on local framework
-source trees; modifying LangGraph internals from product code. If framework bugs
-are hit, attempt an app-layer workaround, then isolate a minimal reproduction.
-
-## Model architecture rule
-
-Treat the model as a generic compute unit. Business code requests a
-capability/profile, not a vendor SDK. Expected profiles: `fast_classifier`,
-`tool_reasoner`, `structured_extractor`, `report_writer`, `long_context_analyst`,
-`local_offline_model`. Must support hosted APIs, OpenAI-compatible local
-endpoints, and future locally trained models without rewriting business logic.
-
-## Engineering priorities
-
-1. clean architecture boundaries
-2. deterministic state and artifact contracts
-3. safe tool execution
-4. domain correctness
-5. observability and replayability
-6. UX polish
-
-When tradeoffs appear, prefer: explicit schemas over implicit dicts; runtime
-events over UI coupling to graph internals; code-level policy over giant
-prompts; one runtime path over multiple parallel agent stacks.
+- `inspection_scope` = resolved assets, `active_asset` = per-slice execution
+- `asset_findings` = per-asset evidence, `findings` = rolled-up session conclusions
+- Asset workers write to `asset_findings` first, then roll up — never race on top-level keys
 
 ## Hard rules
 
-1. Do not recreate `Guard / ReAct / Plan` as separate long-term runtime silos.
-2. Do not couple UI logic to LangGraph node names.
-3. Do not hide critical evidence thresholds only in prompts.
-4. Do not create import-time singletons for graphs, model clients, or persistent stores.
-5. Do not place HTTP/webhook/Feishu logic inside graph node business code.
-6. Do not route a target to a worker node whose tools cannot process that target
-   type. Worker eligibility must be determined from validated capabilities, not
-   just target presence.
+1. **No module-level singletons** for graphs, model clients, adapters, or tool lists. Use lazy-init factories with closure-held clients.
+2. **Code-level policy over prompts** — risk thresholds live in `EvidencePolicy`, not in LLM prompts.
+3. **Deterministic evidence** — tool outputs are parsed by `EvidenceCollector` and override LLM-recalled numeric fields.
+4. **LangGraph as dependency** — never copy framework code. If a bug hits, work around at app layer.
+5. **Model-agnostic** — `build_model(profile)` abstraction, no vendor SDK imports in business code.
+6. **Thin surfaces** — no business logic in HTTP/webhook/Feishu handlers.
+7. **No UI coupling to node names** — frontend maps SSE events via AG-UI adapter (`web/src/lib/agui.ts`).
 
-## Data-source mode (DATA_SOURCE=fake/real)
+## Adapter lifecycle
 
-`Settings.data_source` selects the backend for every external adapter:
-
-- `fake` (default): every adapter builds its `httpx.AsyncClient` through
-  `security/fake/client.build_async_client`, which injects an `httpx.MockTransport`
-  serving synthetic fixtures (`src/security/fake/`) derived from
-  `docs/incidents.md`. The real DSL / PromQL / resolution logic is untouched —
-  only the HTTP layer is faked. This makes the whole suite and the demo run fully
-  offline, no VPN / enterprise systems.
-- `real`: normal network clients reaching the configured endpoints.
-
-When changing an adapter, route its client construction through
-`build_async_client` so the fake mode keeps working. Fixtures live in
-`src/security/fake/`; their tool-contract is locked by `tests/unit/test_fake_source.py`.
-
-## Adapter and resource lifecycle policy
-
-All adapters holding external connections (`AsyncElasticsearch`, `httpx.AsyncClient`,
-Prometheus client, Milvus/Mongo connection, etc.) must:
-- implement `close()`/`aclose()` and expose `__aenter__`/`__aexit__`
-- be owned by the tool factory via closure scope (lazy-init on first use, cached
-  for factory lifetime — never a new client per tool call)
-- be closed by long-lived runtime sessions on exit (use `async with` or explicit
-  `aclose()` in a `finally` block)
+All adapters holding external connections must:
+- implement `aclose()` and be owned by the tool factory via closure scope
+- lazy-init on first use, cached for factory lifetime — never a new client per call
 - never be instantiated at module level
 
-Unbounded connection creation is a silent failure mode under load.
+## Data-source seam
 
-## Donor code policy
+`Settings.data_source` = `fake` (default) or `real`. When changing an adapter, route client construction through `security/fake/client.build_async_client()` so fake mode keeps working.
 
-Primary donor source: `KKShieldHelper-main`. Migrate from it selectively
-(collectors, adapters, report schemas, domain helpers, playbook logic).
-Do not transplant legacy graph wiring as architecture.
+## Documentation
 
-## Testing policy
-
-Required focus: adapter correctness; collector correctness; state schema
-validation; artifact schema validation; report generation correctness; replay
-tests for representative incidents; graph fan-out and rollup correctness;
-cross-model evaluation for key model profiles.
-
-External data sources must be mocked (respx / fixtures) so the suite runs fully
-offline and fast. Do not let tests reach real ES/Prometheus/WAF/GF endpoints.
-
-## Documentation policy
-
-Keep current: `AGENTS.md`, `todo.md`. Architecture docs reflect the actual
-codebase, not donor-repo history.
+- `docs/REFERENCE.md` — full package/config/state/event/tool inventory
+- `docs/changelog.md` — historical M1–M6 progress
+- `todo.md` — active backlog
 
 ## Short directive
 
-Build a constrained-autonomy security investigation runtime.
-Use LangGraph as a dependency, KKS legacy code as a donor, and keep the
-architecture clean enough that the next rewrite is unnecessary.
+Build a constrained-autonomy security investigation runtime. Use LangGraph as a dependency, keep architecture clean enough that the next rewrite is unnecessary.
