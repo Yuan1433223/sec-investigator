@@ -23,6 +23,7 @@ from langgraph.types import Command
 
 from runtime.checkpoint.factory import get_checkpointer
 from runtime.graph.investigation import build_investigation_graph
+from security.adapters.lifecycle import aclose_all_adapters
 from surfaces.web.sse import (
     DONE_FRAME,
     SSEFrame,
@@ -57,6 +58,20 @@ def _build_input(req: InvestigationRequest) -> dict[str, Any]:
     }
 
 
+def _unwrap(event: Any) -> tuple[list[str], Any]:
+    """Unwrap astream(subgraphs=True) chunks into (namespace, event).
+
+    With subgraphs=True, chunks arrive as (namespace_tuple, event).
+    Without subgraphs, chunks are bare events.
+    Top-level events have namespace=() → we normalize to [].
+    Subgraph events have non-empty tuples like ("log_detective:1234",).
+    """
+    if isinstance(event, tuple) and len(event) == 2:
+        ns, data = event
+        return list(ns) if isinstance(ns, (tuple, list)) else [], data
+    return [], event
+
+
 def _graph_config(session_id: str) -> dict[str, Any]:
     return {"configurable": {"thread_id": session_id}, "recursion_limit": 100}
 
@@ -85,8 +100,10 @@ async def stream_investigation(req: InvestigationRequest) -> StreamingResponse:
                     _build_input(req),
                     config=_graph_config(req.session_id),
                     stream_mode="custom",
+                    subgraphs=True,
                 ):
-                    frame = runtime_event_to_sse(event)
+                    ns, runtime_event = _unwrap(event)
+                    frame = runtime_event_to_sse(runtime_event)
                     if frame is not None:
                         yield sse_frame_to_wire(frame)
         except Exception as exc:
@@ -96,6 +113,7 @@ async def stream_investigation(req: InvestigationRequest) -> StreamingResponse:
             frame = SSEFrame(type="error", data={"message": str(exc), "node": None})
             yield sse_frame_to_wire(frame)
         finally:
+            await aclose_all_adapters()
             yield DONE_FRAME
 
     return StreamingResponse(_generate(), media_type="text/event-stream")
@@ -117,8 +135,10 @@ async def resume_investigation(req: ResumeRequest) -> StreamingResponse:
                     Command(resume={"approved": req.approved, "approver": req.approver}),
                     config=_graph_config(req.session_id),
                     stream_mode="custom",
+                    subgraphs=True,
                 ):
-                    frame = runtime_event_to_sse(event)
+                    ns, runtime_event = _unwrap(event)
+                    frame = runtime_event_to_sse(runtime_event)
                     if frame is not None:
                         yield sse_frame_to_wire(frame)
         except Exception as exc:
@@ -126,6 +146,7 @@ async def resume_investigation(req: ResumeRequest) -> StreamingResponse:
             frame = SSEFrame(type="error", data={"message": str(exc), "node": None})
             yield sse_frame_to_wire(frame)
         finally:
+            await aclose_all_adapters()
             yield DONE_FRAME
 
     return StreamingResponse(_generate(), media_type="text/event-stream")

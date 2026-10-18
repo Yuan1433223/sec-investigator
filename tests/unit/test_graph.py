@@ -176,21 +176,38 @@ async def test_graph_streams_status_events(graph):
 
 
 def test_log_detective_tool_list_includes_search_knowledge():
-    """search_knowledge must be in _LOG_TOOLS — no LLM invocation needed."""
-    from runtime.graph.nodes.log_detective import _LOG_TOOLS
+    """search_knowledge must be in the log detective tool list."""
+    from security.tools.es_tools import get_es_tools
+    from security.rag.rag_tools import get_rag_tools
+    from security.tools.public_tools import (
+        get_gf_log_table_structure,
+        get_waf_log_table_structure,
+    )
 
-    tool_names = {t.name for t in _LOG_TOOLS}
+    log_tools = get_es_tools() + get_rag_tools() + [
+        get_gf_log_table_structure,
+        get_waf_log_table_structure,
+    ]
+    tool_names = {t.name for t in log_tools}
     assert "search_knowledge" in tool_names, (
-        f"search_knowledge missing from _LOG_TOOLS. Got: {sorted(tool_names)}"
+        f"search_knowledge missing. Got: {sorted(tool_names)}"
     )
 
 
 def test_log_detective_tool_list_still_contains_es_tools():
     """Sanity: ES tools must not have been accidentally dropped."""
-    from runtime.graph.nodes.log_detective import _LOG_TOOLS
-    from security.tools.es_tools import ES_TOOLS
+    from security.tools.es_tools import get_es_tools
+    from security.rag.rag_tools import get_rag_tools
+    from security.tools.public_tools import (
+        get_gf_log_table_structure,
+        get_waf_log_table_structure,
+    )
 
-    es_names = {t.name for t in ES_TOOLS}
-    tool_names = {t.name for t in _LOG_TOOLS}
+    es_names = {t.name for t in get_es_tools()}
+    log_tools = get_es_tools() + get_rag_tools() + [
+        get_gf_log_table_structure,
+        get_waf_log_table_structure,
+    ]
+    tool_names = {t.name for t in log_tools}
     missing = es_names - tool_names
-    assert not missing, f"ES tools dropped from _LOG_TOOLS: {missing}"
+    assert not missing, f"ES tools dropped from log_detective tool list: {missing}"
