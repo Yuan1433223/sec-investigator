@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sec-investigator 作品集差距分析与门面化路线 · 2026-09-30</title>
+<style>
+:root{
+  --bg:#09090b;
+  --bg-elev:#101013;
+  --bg-elev2:#16161a;
+  --border:rgba(255,255,255,0.08);
+  --border-strong:rgba(255,255,255,0.14);
+  --text:#e4e4e7;
+  --text-dim:#a1a1aa;
+  --text-mute:#71717a;
+  --accent:#10b981;
+  --accent-dim:rgba(16,185,129,0.12);
+  --critical:#ef4444;
+  --high:#f97316;
+  --medium:#eab308;
+  --low:#22c55e;
+  --info:#3b82f6;
+  --mono:Consolas,"Cascadia Code","JetBrains Mono",ui-monospace,monospace;
+  --sans:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  font-size:15px;line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent);text-decoration:none;border-bottom:1px dotted rgba(16,185,129,0.4)}
+a:hover{border-bottom-style:solid}
+code,.mono{font-family:var(--mono);font-size:0.88em;background:rgba(255,255,255,0.05);padding:1px 5px;border-radius:4px;color:#d4d4d8}
+/* TOC */
+nav.toc{
+  position:sticky;top:0;z-index:50;background:rgba(9,9,11,0.92);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--border);
+}
+nav.toc .inner{
+  max-width:1200px;margin:0 auto;padding:10px 24px;
+  display:flex;gap:18px;overflow-x:auto;white-space:nowrap;align-items:center;
+  font-size:13px;
+}
+nav.toc .brand{color:var(--accent);font-family:var(--mono);font-weight:600;margin-right:8px;flex-shrink:0}
+nav.toc a{color:var(--text-dim);border:none;flex-shrink:0}
+nav.toc a:hover{color:var(--text)}
+nav.toc a.active{color:var(--accent)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+/* HERO */
+.hero{padding:64px 0 40px;border-bottom:1px solid var(--border)}
+.hero .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:16px}
+.hero h1{font-size:38px;line-height:1.2;font-weight:700;letter-spacing:-0.01em;margin-bottom:14px}
+.hero .sub{color:var(--text-dim);font-size:16px;margin-bottom:24px}
+.verdict{
+  border-left:3px solid var(--critical);background:rgba(239,68,68,0.06);
+  padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:28px;font-size:16px;
+}
+.verdict b{color:#fca5a5}
+.score-strip{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.score-chip{
+  border:1px solid var(--border);background:var(--bg-elev);border-radius:10px;
+  padding:14px 18px;min-width:120px;
+}
+.score-chip .num{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--accent)}
+.score-chip .num.warn{color:var(--high)}
+.score-chip .lbl{font-size:12px;color:var(--text-mute);margin-top:2px}
+/* sections */
+section{padding:48px 0;border-bottom:1px solid var(--border)}
+section h2{font-size:26px;font-weight:700;margin-bottom:8px;letter-spacing:-0.01em}
+section h2 .no{font-family:var(--mono);color:var(--text-mute);font-size:16px;margin-right:10px}
+section .lead{color:var(--text-dim);margin-bottom:28px;max-width:880px}
+h3{font-size:18px;font-weight:600;margin:28px 0 12px;color:var(--text)}
+h4{font-size:15px;font-weight:600;margin:18px 0 8px;color:var(--text)}
+p{margin-bottom:12px;color:var(--text)}
+ul,ol{margin:0 0 14px 22px}
+li{margin-bottom:6px;color:var(--text)}
+.muted{color:var(--text-dim)}
+.small{font-size:13px;color:var(--text-mute)}
+/* cards */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.card{
+  background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;
+  padding:18px;animation:fadein 0.25s ease-out;
+}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card h4{margin-top:0}
+.card .tag{
+  display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:4px;
+  margin-bottom:10px;letter-spacing:0.04em;
+}
+.tag.critical{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+.tag.high{background:rgba(249,115,22,0.15);color:#fdba74;border:1px solid rgba(249,115,22,0.3)}
+.tag.medium{background:rgba(234,179,8,0.15);color:#fde047;border:1px solid rgba(234,179,8,0.3)}
+.tag.low{background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.3)}
+.tag.info{background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)}
+.tag.accent{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(16,185,129,0.3)}
+/* tables */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+th{background:var(--bg-elev2);text-align:left;padding:10px 12px;font-weight:600;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+tr:hover td{background:rgba(255,255,255,0.02)}
+/* evidence callouts */
+.evi{
+  background:var(--bg-elev);border:1px solid var(--border);border-left:3px solid var(--critical);
+  border-radius:0 10px 10px 0;padding:16px 18px;margin-bottom:14px;
+}
+.evi.obs{border-left-color:var(--info)}
+.evi .file{font-family:var(--mono);font-size:12px;color:var(--text-mute);margin-bottom:6px}
+/* gallery */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:18px 0}
+.gallery figure{margin:0;cursor:zoom-in;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg-elev);transition:border-color 0.15s}
+.gallery figure:hover{border-color:var(--accent)}
+.gallery img{width:100%;display:block;aspect-ratio:16/10;object-fit:cover;object-position:top}
+.gallery figcaption{padding:8px 10px;font-size:12px;color:var(--text-dim);line-height:1.4}
+/* lightbox */
+.lb{position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:100;display:none;align-items:center;justify-content:center;padding:30px;cursor:zoom-out}
+.lb.open{display:flex}
+.lb img{max-width:100%;max-height:100%;border:1px solid var(--border-strong);border-radius:6px}
+/* svg containers */
+.figure{background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:18px;margin:18px 0;overflow-x:auto}
+.figure .cap{font-size:12.5px;color:var(--text-mute);margin-top:10px;font-family:var(--mono)}
+.figure svg{display:block;margin:0 auto;max-width:100%;height:auto}
+/* bars */
+.bar-row{display:grid;grid-template-columns:140px 1fr 60px;gap:10px;align-items:center;margin-bottom:10px;font-size:13px}
+.bar-track{height:10px;background:rgba(255,255,255,0.05);border-radius:5px;position:relative;overflow:hidden}
+.bar-cur{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:5px}
+.bar-tgt{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--text-dim)}
+.bar-val{font-family:var(--mono);text-align:right;color:var(--text-dim)}
+/* priority dot */
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.dot.crit{background:var(--critical);box-shadow:0 0 8px var(--critical)}
+.dot.high{background:var(--high)}
+.dot.med{background:var(--medium)}
+.dot.low{background:var(--low)}
+/* swimlane legend */
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);margin:8px 0 0;font-family:var(--mono)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.legend .l-p0::before{background:var(--critical)}
+.legend .l-p1::before{background:var(--high)}
+.legend .l-p2::before{background:var(--medium)}
+footer{padding:32px 0 60px;color:var(--text-mute);font-size:13px}
+@media (max-width:900px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .hero h1{font-size:28px}
+  nav.toc .inner{padding:8px 16px}
+  .wrap{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <div class="inner">
+    <span class="brand">SI·GAP</span>
+    <a href="#top">Hero</a>
+    <a href="#summary">执行摘要</a>
+    <a href="#status">现状盘点</a>
+    <a href="#evidence">穿帮证据</a>
+    <a href="#landscape">赛道格局</a>
+    <a href="#frontend">前端范式</a>
+    <a href="#gap">六维差距</a>
+    <a href="#stack">选型</a>
+    <a href="#roadmap">路线图</a>
+    <a href="#demo">演示脚本</a>
+    <a href="#appendix">附录</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="eyebrow">Portfolio Gap Analysis · 2026-09-30 · DATA_SOURCE=fake + GLM 实跑审计</div>
+    <h1>sec-investigator 作品集差距分析与门面化路线</h1>
+    <div class="sub">约束自治安全调查 Agent · LangGraph 1.1.9 · 对标 11 个开源安全项目 + 17 个前端标杆 · 实跑审计</div>
+    <div class="verdict">
+      一句话总判：<b>后端架构骨架是真的；可演示的成品是假的。</b>
+      面试官按 README 点一遍，会在 30 秒内看到降级占位报告、永远不弹出的审批窗、空的错误率字段。
+    </div>
+    <div class="score-strip">
+      <div class="score-chip"><div class="num">3.2<span style="font-size:14px;color:var(--text-mute)">/5</span></div><div class="lbl">综合门面分</div></div>
+      <div class="score-chip"><div class="num">1.13万</div><div class="lbl">Python 行 / 70 源文件</div></div>
+      <div class="score-chip"><div class="num">1285</div><div class="lbl">web/src 行（React19+Vite6）</div></div>
+      <div class="score-chip"><div class="num">508</div><div class="lbl">测试通过 / 20.66s</div></div>
+      <div class="score-chip"><div class="num">3</div><div class="lbl">真实事故 fixture</div></div>
+      <div class="score-chip"><div class="num warn">11+17</div><div class="lbl">安全赛道 + 前端对标</div></div>
+    </div>
+    <div class="small">报告生成日期 2026-09-30 · star 数统一标注"截至 2026-09-30" · 本文件为单文件离线 HTML，所有图表为手写内联 SVG</div>
+  </div>
+</header>
+
+<!-- ============ 1 执行摘要 ============ -->
+<section id="summary">
+<div class="wrap">
+  <h2><span class="no">01</span>执行摘要</h2>
+  <p class="lead">最高信号结论，按"打掉作品集叙事的程度"排序。</p>
+  <div class="grid g2">
+    <div class="card"><span class="tag critical">P0-1</span><h4>演示穿帮四连</h4>
+      <p class="muted" style="font-size:13.5px">reporter 两次降级（<code>reporter.py:70</code>）；HITL 审批门是死路径（critical 依赖 LLM 回填原始数字字段，LLM 写 prose/空 dict → classifier 默认 low → 永不 interrupt，两次实跑零触发）；fixture 注释 62.9% 与实合成 22.9% 自相矛盾；machine/security worker 只剩 rollup 样板话，log_detective 耗尽 10 轮工具预算返回 <code>error_rate={}</code>。</p></div>
+    <div class="card"><span class="tag accent">窗口</span><h4>赛道刚开门，座位没坐满</h4>
+      <p class="muted" style="font-size:13.5px">平台层（告警聚合+工作流）已被 Keep/Argus/ASP 占住；调查纵深层开源里只有 AiSOC 完整；大厂（MS/Google/Wiz）基本闭源。个人项目差异化窗口在"窄而深 + 可离线复现 + 可审计 + MCP 化"，不是再做一个大 SOC。</p></div>
+    <div class="card"><span class="tag info">前端</span><h4>前端选型结论</h4>
+      <p class="muted" style="font-size:13.5px">主干 Tailwind + shadcn/ui 自研（React19+Vite6 原地升级）；不选 Chainlit（布局锁死）、不选 CopilotKit 当外壳（copilot 味、runtime 耦合）；assistant-ui 仅用于可选 supervisor 对话切片；协议层 SSE schema 向 AG-UI 对齐。</p></div>
+    <div class="card"><span class="tag accent">策略</span><h4>双线改造</h4>
+      <p class="muted" style="font-size:13.5px">A 线·作品集门面（2–4 周）：先把"critical→审批→批准→结构化报告"闭环跑通，再做暗色控制台 UI 与 README 销售页；B 线·落地基础（1–3 月）：adapter 生命周期、真 worker E2E/eval、auth/RBAC、OTel、MCP 化、CI/部署。</p></div>
+    <div class="card"><span class="tag high">观测</span><h4>tool_call 事件在子图里写、没冒泡</h4>
+      <p class="muted" style="font-size:13.5px">工具事件由 <code>_tool_tracing.py:166</code> 的 <code>get_stream_writer()</code> 在 ReAct 子图内写出，而 <code>investigation.py:84</code> 用顶层 <code>graph.astream(stream_mode="custom")</code>，未开 <code>subgraphs=True</code>，故 UI 时间线零条工具调用。后端发射了、前端收到了 node status——中间断在父子图事件冒泡。</p></div>
+    <div class="card"><span class="tag medium">诚实</span><h4>测试绿但有盲区</h4>
+      <p class="muted" style="font-size:13.5px">508 绿测离线 20.66s 是真的，但 <code>tests/integration</code> 与 <code>tests/evals</code> 是空包；replay 测试 pre-inject findings + mock LLM，从不真跑 worker。本次 P0 四条全部无测试覆盖——绿的 508 给了虚假安全感。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 2 现状盘点 ============ -->
+<section id="status">
+<div class="wrap">
+  <h2><span class="no">02</span>项目现状盘点</h2>
+  <p class="lead">量化指标 + 真实调查流水线形态 + 做对了什么。所有数字来自 2026-09-30 只读审计与实跑。</p>
+
+  <h3>2.1 量化指标</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>项</th><th class="num">数值</th><th>证据</th></tr></thead>
+    <tbody>
+      <tr><td>Python 源文件</td><td class="num">70 个 .py / ~1.13 万行</td><td>目录遍历 src/</td></tr>
+      <tr><td>web/src</td><td class="num">12 文件 / 1285 行</td><td>React19+Vite6 纯手写，零 UI 库</td></tr>
+      <tr><td>测试</td><td class="num">508 passed / 20.66s</td><td><code>uv run pytest -q</code> 实跑</td></tr>
+      <tr><td>README 自称测试</td><td class="num">495 / ~6s</td><td>README.md:104 —— 与实际不符</td></tr>
+      <tr><td>tests/integration · tests/evals</td><td class="num">空包</td><td>仅 <code>__init__.py</code></td></tr>
+      <tr><td>replay 测试</td><td class="num">1 个</td><td>pre-inject findings + mock LLM，不跑真 worker</td></tr>
+      <tr><td>Docker / CI / 编排 yaml</td><td class="num">无</td><td>根目录无 Dockerfile / .github</td></tr>
+      <tr><td>sec_investigator.db</td><td class="num">17 MB 裸奔仓库根</td><td>SqliteSaver：checkpoints 1265 行 / writes 2889 行</td></tr>
+      <tr><td>真实 UI 端到端</td><td class="num">2 次</td><td>game.ali213.net / api2.xs2027.cn</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>2.2 真实调查流水线（扇出形态）</h3>
+  <div class="figure">
+    <svg width="960" height="460" viewBox="0 0 960 460" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="12">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#71717a"/>
+        </marker>
+      </defs>
+      <!-- main row -->
+      <g>
+        <rect x="30" y="20" width="150" height="44" rx="6" fill="#16161a" stroke="#10b981" stroke-width="1.2"/>
+        <text x="105" y="40" fill="#e4e4e7" text-anchor="middle">asset_resolution</text>
+        <text x="105" y="55" fill="#71717a" text-anchor="middle" font-size="10">解析资产/能力</text>
+        <line x1="180" y1="42" x2="225" y2="42" stroke="#71717a" marker-end="url(#arr)"/>
+        <rect x="230" y="20" width="130" height="44" rx="6" fill="#16161a" stroke="#10b981"/>
+        <text x="295" y="40" fill="#e4e4e7" text-anchor="middle">supervisor</text>
+        <text x="295" y="55" fill="#71717a" text-anchor="middle" font-size="10">分发/切片</text>
+      </g>
+      <!-- splits -->
+      <path d="M295,64 L295,95" stroke="#71717a"/>
+      <path d="M295,95 L130,95 L130,120" stroke="#71717a" fill="none" marker-end="url(#arr)"/>
+      <path d="M295,95 L480,95 L480,120" stroke="#71717a" fill="none" marker-end="url(#arr)"/>
+      <path d="M295,95 L780,95 L780,120" stroke="#71717a" fill="none" marker-end="url(#arr)"/>
+      <!-- log_detective -->
+      <rect x="55" y="122" width="150" height="40" rx="6" fill="#16161a" stroke="#3b82f6"/>
+      <text x="130" y="140" fill="#e4e4e7" text-anchor="middle">log_detective</text>
+      <text x="130" y="154" fill="#71717a" text-anchor="middle" font-size="10">ReAct 日志取证</text>
+      <!-- machine dispatch -->
+      <rect x="400" y="122" width="160" height="40" rx="6" fill="#16161a" stroke="#f97316"/>
+      <text x="480" y="140" fill="#e4e4e7" text-anchor="middle">dispatch_machine_checks</text>
+      <text x="480" y="154" fill="#71717a" text-anchor="middle" font-size="10">Send(machine_check/asset)</text>
+      <!-- security dispatch -->
+      <rect x="700" y="122" width="160" height="40" rx="6" fill="#16161a" stroke="#f97316"/>
+      <text x="780" y="140" fill="#e4e4e7" text-anchor="middle">dispatch_security_checks</text>
+      <text x="780" y="154" fill="#71717a" text-anchor="middle" font-size="10">Send(security_guard/asset)</text>
+      <!-- machine parallel -->
+      <line x1="480" y1="162" x2="480" y2="180" stroke="#71717a"/>
+      <line x1="380" y1="180" x2="580" y2="180" stroke="#71717a"/>
+      <line x1="380" y1="180" x2="380" y2="195" stroke="#71717a" marker-end="url(#arr)"/>
+      <line x1="480" y1="180" x2="480" y2="195" stroke="#71717a" marker-end="url(#arr)"/>
+      <line x1="580" y1="180" x2="580" y2="195" stroke="#71717a" marker-end="url(#arr)"/>
+      <rect x="337" y="197" width="86" height="30" rx="5" fill="#101013" stroke="#f97316" stroke-dasharray="3 2"/>
+      <text x="380" y="216" fill="#fdba74" text-anchor="middle" font-size="11">machine_check·A</text>
+      <rect x="437" y="197" width="86" height="30" rx="5" fill="#101013" stroke="#f97316" stroke-dasharray="3 2"/>
+      <text x="480" y="216" fill="#fdba74" text-anchor="middle" font-size="11">machine_check·B</text>
+      <rect x="537" y="197" width="86" height="30" rx="5" fill="#101013" stroke="#f97316" stroke-dasharray="3 2"/>
+      <text x="580" y="216" fill="#fdba74" text-anchor="middle" font-size="11">machine_check·C</text>
+      <line x1="380" y1="227" x2="380" y2="250" stroke="#71717a"/>
+      <line x1="480" y1="227" x2="480" y2="250" stroke="#71717a"/>
+      <line x1="580" y1="227" x2="580" y2="250" stroke="#71717a"/>
+      <line x1="380" y1="250" x2="580" y2="250" stroke="#71717a"/>
+      <line x1="480" y1="250" x2="480" y2="265" stroke="#71717a" marker-end="url(#arr)"/>
+      <rect x="400" y="267" width="160" height="34" rx="6" fill="#16161a" stroke="#10b981"/>
+      <text x="480" y="288" fill="#e4e4e7" text-anchor="middle">machine_rollup</text>
+      <!-- security parallel -->
+      <line x1="780" y1="162" x2="780" y2="180" stroke="#71717a"/>
+      <line x1="680" y1="180" x2="880" y2="180" stroke="#71717a"/>
+      <line x1="680" y1="180" x2="680" y2="195" stroke="#71717a" marker-end="url(#arr)"/>
+      <line x1="780" y1="180" x2="780" y2="195" stroke="#71717a" marker-end="url(#arr)"/>
+      <line x1="880" y1="180" x2="880" y2="195" stroke="#71717a" marker-end="url(#arr)"/>
+      <rect x="637" y="197" width="86" height="30" rx="5" fill="#101013" stroke="#f97316" stroke-dasharray="3 2"/>
+      <text x="680" y="216" fill="#fdba74" text-anchor="middle" font-size="11">security_guard·A</text>
+      <rect x="737" y="197" width="86" height="30" rx="5" fill="#101013" stroke="#f97316" stroke-dasharray="3 2"/>
+      <text x="780" y="216" fill="#fdba74" text-anchor="middle" font-size="11">security_guard·B</text>
+      <rect x="837" y="197" width="86" height="30" rx="5" fill="#101013" stroke="#f97316" stroke-dasharray="3 2"/>
+      <text x="880" y="216" fill="#fdba74" text-anchor="middle" font-size="11">security_guard·C</text>
+      <line x1="680" y1="227" x2="680" y2="250" stroke="#71717a"/>
+      <line x1="780" y1="227" x2="780" y2="250" stroke="#71717a"/>
+      <line x1="880" y1="227" x2="880" y2="250" stroke="#71717a"/>
+      <line x1="680" y1="250" x2="880" y2="250" stroke="#71717a"/>
+      <line x1="780" y1="250" x2="780" y2="265" stroke="#71717a" marker-end="url(#arr)"/>
+      <rect x="700" y="267" width="160" height="34" rx="6" fill="#16161a" stroke="#10b981"/>
+      <text x="780" y="288" fill="#e4e4e7" text-anchor="middle">security_rollup</text>
+      <!-- converge -->
+      <path d="M130,162 L130,340 L430,340" stroke="#71717a" fill="none"/>
+      <path d="M480,301 L480,340" stroke="#71717a" fill="none"/>
+      <path d="M780,301 L780,340 L530,340" stroke="#71717a" fill="none"/>
+      <line x1="530" y1="340" x2="530" y2="360" stroke="#71717a" marker-end="url(#arr)"/>
+      <rect x="440" y="362" width="180" height="40" rx="6" fill="#16161a" stroke="#eab308"/>
+      <text x="530" y="380" fill="#e4e4e7" text-anchor="middle">approval_gate</text>
+      <text x="530" y="395" fill="#71717a" text-anchor="middle" font-size="10">HITL interrupt（实跑零触发）</text>
+      <line x1="530" y1="402" x2="530" y2="420" stroke="#71717a" marker-end="url(#arr)"/>
+      <rect x="440" y="422" width="180" height="34" rx="6" fill="#16161a" stroke="#10b981"/>
+      <text x="530" y="443" fill="#e4e4e7" text-anchor="middle">reporter → END</text>
+    </svg>
+    <div class="cap">图 2.2 · Send fan-out：dispatch 节点按资产 Send 出 N 个并行 worker 切片，worker 只写自己的 asset_findings，由 rollup 汇总进顶层 findings——避免并行 worker 竞争同一 key。</div>
+  </div>
+
+  <h3>2.3 做对了什么（这部分是真的）</h3>
+  <div class="grid g3">
+    <div class="card"><span class="tag accent">架构</span><h4>三层分层</h4><p class="muted" style="font-size:13.5px">runtime / security / surfaces 边界干净，FastAPI 只装配路由/SSE/静态托管，无业务逻辑漏进 surface。</p></div>
+    <div class="card"><span class="tag accent">路由</span><h4>确定性能力路由</h4><p class="muted" style="font-size:13.5px">inspection_scope / active_asset / asset_findings / findings 四态分离；Send fan-out + rollup 契约清晰。</p></div>
+    <div class="card"><span class="tag accent">策略</span><h4>代码级证据阈值</h4><p class="muted" style="font-size:13.5px"><code>policies/evidence.py</code> 有 code-level 阈值并在三个 worker 里覆写 LLM risk_level——形式正确（实效失效见 P0-2）。</p></div>
+    <div class="card"><span class="tag accent">模型</span><h4>profile 模型抽象</h4><p class="muted" style="font-size:13.5px">6 个 profile（fast_classifier / tool_reasoner / structured_extractor / report_writer / long_context_analyst / local_offline_model），业务代码不见厂商 SDK。</p></div>
+    <div class="card"><span class="tag accent">数据</span><h4>fake/real seam</h4><p class="muted" style="font-size:13.5px">统一 <code>build_async_client</code> 注入 MockTransport；DSL 真 AST 解析、PromQL 真向量识别，全栈离线可跑。</p></div>
+    <div class="card"><span class="tag accent">测试</span><h4>508 离线绿测</h4><p class="muted" style="font-size:13.5px">全绿、离线、20.66s；adapter/collector/schema/report 单测扎实——只是缺真 worker E2E。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 3 穿帮证据 ============ -->
+<section id="evidence">
+<div class="wrap">
+  <h2><span class="no">03</span>实跑穿帮证据</h2>
+  <p class="lead">两次真实 UI 调查（DATA_SOURCE=fake + GLM OpenAI 兼容端点，:18230）截图与代码证据链。这一节决定作品集能不能见人。</p>
+
+  <h3>3.1 截图画廊（点击放大）</h3>
+  <div class="gallery" id="gallery">
+    <figure><img src="docs/gap-analysis-assets/ui-01-initial.png" alt="初始页"><figcaption>ui-01 · 初始页：三预设目标 + 6 步流水线轨 + 空面板。纸墨风设计有品味，但无图表无暗色。</figcaption></figure>
+    <figure><img src="docs/gap-analysis-assets/ui-02-running.png" alt="调查中"><figcaption>ui-02 · 点选 api2.xs2027.cn 后"调查中"：流水线轨高亮 activeNode，事件日志开始流式 append。</figcaption></figure>
+    <figure><img src="docs/gap-analysis-assets/ui-03-streaming.png" alt="流式事件"><figcaption>ui-03 · 流式中：资产解析✓、日志检测进行中。时间线只有 node status——零条 tool_call（见 3.6）。</figcaption></figure>
+    <figure><img src="docs/gap-analysis-assets/ui-04-degraded-report.png" alt="降级报告"><figcaption>ui-04 · incident2 完成：日志维度有 LLM 写的数字（QPS 300、5xx 22.9%），机器/安全维度是 rollup 样板话；最终报告=<b style="color:#fca5a5">降级占位文案</b>。</figcaption></figure>
+    <figure><img src="docs/gap-analysis-assets/ui-05-empty-findings.png" alt="空发现"><figcaption>ui-05 · incident1：log_detective "tool budget exhausted, partial finding"，<code>error_rate={}</code> 空、QPS 无数据；报告再次降级；审批弹窗未出现。</figcaption></figure>
+  </div>
+
+  <h3>3.2 P0 证据卡</h3>
+  <div class="evi">
+    <div class="file">src/runtime/graph/nodes/reporter.py:70</div>
+    <h4 style="margin-top:0">① reporter 两次降级</h4>
+    <p class="muted" style="font-size:13.5px">日志原样：<code>Report extraction failed; emitting degraded report</code>。两次实跑最终报告正文都是"报告生成失败：模型未返回结构化报告，已基于现有发现给出降级结论"。README 宣称"三个真实事故均可完整复现"——当前配置下复现不出金标准报告。截图证据：ui-04 / ui-05。</p>
+  </div>
+  <div class="evi">
+    <div class="file">policies/evidence.py:158 · worker 节点 LLM 输出契约</div>
+    <h4 style="margin-top:0">② HITL 审批门是死路径</h4>
+    <p class="muted" style="font-size:13.5px">审批触发条件是存在 <code>risk_level==critical</code> 的 finding，而 critical 判定依赖 LLM 在 finding 里填原始数字字段（<code>rate_5xx / rate_4xx / cpu_pct</code>）。实跑中 LLM 把这些字段写成 prose 甚至空 dict（incident1 <code>error_rate={}</code>），deterministic classifier 拿不到数 → 一律默认 low → 永不 critical → <code>approval_gate</code> 永不 interrupt。审批弹窗两次实跑零触发。AGENTS.md 最想展示的"约束自治 / 人在回路"卖点，demo 里演不出来。</p>
+  </div>
+  <div class="evi">
+    <div class="file">src/security/fake/fixtures.py:85（注释 62.9%） · 实合成 4200/18300 ≈ 22.9%</div>
+    <h4 style="margin-top:0">③ fixture 自相矛盾</h4>
+    <p class="muted" style="font-size:13.5px">注释与 <code>docs/incidents.md</code> 都称 incident2 502 占比 62.9%，但 fake DSL 实际合成给 LLM 的是 4200/18300 ≈ 22.9%（UI 实测，见 ui-04）。招牌事故的严重程度在 demo 数据里被悄悄稀释——面试官对照 incidents.md 会当场发现。</p>
+  </div>
+  <div class="evi">
+    <div class="file">nodes/rollups.py · log_detective 节点</div>
+    <h4 style="margin-top:0">④ worker 发现塌方</h4>
+    <p class="muted" style="font-size:13.5px">machine/security 两个维度的最终 finding 是 rollup 样板话（"Infrastructure checks completed for 1 asset(s); highest risk=low."），没有任何 ReAct 分析内容；incident1 日志维度耗尽 10 轮工具预算仍返回空字段（ui-05）。<b>ReAct 智能体在自己的 fake 数据上都不收敛。</b></p>
+  </div>
+
+  <h3>3.3 可观测性残缺（证据链）</h3>
+  <div class="evi obs">
+    <div class="file">_tool_tracing.py:166 → investigation.py:84 → sse.py:43 → useInvestigation.ts:53</div>
+    <h4 style="margin-top:0">tool_call 事件在子图内写出，未冒泡到父图 astream</h4>
+    <p class="muted" style="font-size:13.5px">
+      工具事件由 <code>create_react_agent</code> 内部子图里的 <code>_tool_tracing.py:166</code> <code>get_stream_writer()</code> 写出；
+      但 <code>surfaces/api/investigation.py:84</code> 用顶层 <code>graph.astream(..., stream_mode="custom")</code>，
+      子图 custom 事件默认不冒泡到父图流（未开 <code>subgraphs=True</code> 或未在 worker 节点重发）。
+      <code>surfaces/web/sse.py:43</code> 正确映射了 ToolCallEvent，前端 <code>useInvestigation.ts:53</code> 也处理 <code>tool_call</code>——中间断在父子图事件冒泡。
+      结果：UI 时间线只有 node status，"逐步展示代理每一步动作"名不副实。
+    </p>
+  </div>
+</div>
+</section>
+
+<!-- ============ 4 赛道格局 ============ -->
+<section id="landscape">
+<div class="wrap">
+  <h2><span class="no">04</span>赛道格局（安全 / SOC 方向）</h2>
+  <p class="lead">11 个开源项目总表，star 截至 2026-09-30（GitHub REST API 当日查询）。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>项目</th><th class="num">Stars</th><th>License</th><th>编排</th><th>后端</th><th>前端形态</th><th>主体</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://github.com/keephq/keep">Keep</a></td><td class="num">12,367</td><td>双授权（NOASSERTION）</td><td>自研 workflow（IaC）</td><td>Python</td><td>Next.js Web 控制台</td><td>Keep Inc.</td></tr>
+      <tr><td><a href="https://github.com/robusta-dev/holmesgpt">HolmesGPT</a></td><td class="num">3,482</td><td>Apache-2.0</td><td>自研 agentic loop</td><td>Python</td><td>CLI + Slack bot（CNCF Sandbox）</td><td>Robusta + MS</td></tr>
+      <tr><td><a href="https://github.com/robusta-dev/robusta">Robusta</a></td><td class="num">3,104</td><td>MIT</td><td>自研</td><td>Python</td><td>Web UI（SaaS 为主）</td><td>Robusta</td></tr>
+      <tr><td><a href="https://github.com/beenuar/AiSOC">AiSOC</a> ⭐</td><td class="num">2,380</td><td>MIT</td><td>自研（Investigation Ledger）</td><td>Python+Kafka/PG/CH/Neo4j/Ollama</td><td><b>完整 Web 控制台 + demo.mp4</b></td><td>个人/社区 v14</td></tr>
+      <tr><td><a href="https://github.com/FunnyWolf/agentic-soc-platform">ASP</a></td><td class="num">1,200</td><td>README 称 MIT</td><td>自研 Playbook+LLM</td><td>Python+TS</td><td>Web UI（中文，404Starlink）</td><td>Knownsec 星链</td></tr>
+      <tr><td><a href="https://github.com/Sec-Link/Argus-Agentic-SOC-Platform">Argus</a></td><td class="num">1,145</td><td>Apache-2.0</td><td>自研 Orchestrator/Prefect</td><td>Django 6+DRF</td><td><b>Next.js15+AntD5，live demo</b></td><td>Sec-Link</td></tr>
+      <tr><td><a href="https://github.com/mezmo/aura">AURA</a></td><td class="num">395</td><td>Apache-2.0</td><td>自研 Rust runtime（TOML）</td><td><b>Rust</b></td><td>CLI / OpenAI 兼容 API</td><td>Mezmo</td></tr>
+      <tr><td><a href="https://github.com/SecurityClaw/SecurityClaw">SecurityClaw</a></td><td class="num">274</td><td>MIT</td><td>skill-based agent</td><td>Python</td><td>无成熟 UI</td><td>个人/社区</td></tr>
+      <tr><td><a href="https://github.com/zhadyz/AI_SOC">AI_SOC</a></td><td class="num">168</td><td>NOASSERTION</td><td>多 agent</td><td>Python（Wazuh+TheHive+RAG）</td><td>TheHive 为前端</td><td>个人/研究</td></tr>
+      <tr><td><a href="https://github.com/volcengine/veaiops">veaiops</a></td><td class="num">38</td><td>Apache-2.0</td><td>自研</td><td>TypeScript</td><td>企业控制台</td><td>字节火山引擎</td></tr>
+      <tr><td><a href="https://github.com/vigil-agency/vigil">Vigil SOC</a></td><td class="num">18</td><td>AGPL-3.0</td><td>Bifrost+MCP（13 agent）</td><td>JavaScript</td><td>Web UI（营销站重）</td><td>初创</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.1 定位象限</h3>
+  <div class="figure">
+    <svg width="720" height="460" viewBox="0 0 720 460" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="11">
+      <!-- axes -->
+      <line x1="70" y1="40" x2="70" y2="380" stroke="#3f3f46"/>
+      <line x1="70" y1="380" x2="680" y2="380" stroke="#3f3f46"/>
+      <!-- grid -->
+      <line x1="70" y1="295" x2="680" y2="295" stroke="#27272a" stroke-dasharray="2 3"/>
+      <line x1="70" y1="210" x2="680" y2="210" stroke="#27272a" stroke-dasharray="2 3"/>
+      <line x1="70" y1="125" x2="680" y2="125" stroke="#27272a" stroke-dasharray="2 3"/>
+      <line x1="220" y1="40" x2="220" y2="380" stroke="#27272a" stroke-dasharray="2 3"/>
+      <line x1="370" y1="40" x2="370" y2="380" stroke="#27272a" stroke-dasharray="2 3"/>
+      <line x1="520" y1="40" x2="520" y2="380" stroke="#27272a" stroke-dasharray="2 3"/>
+      <text x="375" y="410" fill="#71717a" text-anchor="middle">X · 调查纵深 / 取证深度 →</text>
+      <text x="20" y="210" fill="#71717a" text-anchor="middle" transform="rotate(-90 20 210)">Y · 前端与产品完成度 →</text>
+      <!-- quadrant labels -->
+      <text x="600" y="60" fill="#3f3f46" text-anchor="end" font-size="10">理想区：纵深深 + 产品完整</text>
+      <!-- points: px=70+X*61, py=380-Y*34 -->
+      <!-- sec-investigator (6.5,4.0): 466, 244 -->
+      <circle cx="466" cy="244" r="9" fill="#10b981" stroke="#09090b" stroke-width="2"/>
+      <text x="466" y="270" fill="#10b981" text-anchor="middle" font-weight="bold">sec-investigator</text>
+      <text x="466" y="283" fill="#71717a" text-anchor="middle" font-size="10">(6.5, 4.0)</text>
+      <!-- AiSOC (9,8.5): 619, 91 -->
+      <circle cx="619" cy="91" r="8" fill="#3b82f6"/>
+      <text x="619" y="78" fill="#93c5fd" text-anchor="middle">AiSOC</text>
+      <!-- Keep (3.5,9): 283, 74 -->
+      <circle cx="283" cy="74" r="8" fill="#a1a1aa"/>
+      <text x="283" y="62" fill="#d4d4d8" text-anchor="middle">Keep</text>
+      <!-- HolmesGPT (7.5,2.5): 528, 295 -->
+      <circle cx="528" cy="295" r="8" fill="#a1a1aa"/>
+      <text x="528" y="315" fill="#d4d4d8" text-anchor="middle">HolmesGPT</text>
+      <!-- AURA (6,2): 436, 312 -->
+      <circle cx="436" cy="312" r="7" fill="#a1a1aa"/>
+      <text x="436" y="332" fill="#d4d4d8" text-anchor="middle">AURA</text>
+      <!-- Argus (5.5,8): 406, 108 -->
+      <circle cx="406" cy="108" r="8" fill="#a1a1aa"/>
+      <text x="406" y="96" fill="#d4d4d8" text-anchor="middle">Argus</text>
+      <!-- ASP (5,6.5): 375, 159 -->
+      <circle cx="375" cy="159" r="8" fill="#a1a1aa"/>
+      <text x="375" y="148" fill="#d4d4d8" text-anchor="middle">ASP</text>
+    </svg>
+    <div class="cap">图 4.1 · sec-investigator 当前卡在"有 React UI 但演示穿帮"的中间带；右上理想区（AiSOC 附近）是门面化后的目标位置。评分为审计员定性判断（0–10）。</div>
+  </div>
+
+  <h3>4.2 三条格局判断</h3>
+  <div class="grid g3">
+    <div class="card"><span class="tag info">平台层</span><h4>已被占住</h4><p class="muted" style="font-size:13.5px">告警聚合 + 工作流 + Web console：Keep / Argus / ASP / Robusta，都在往"AI 关联"加能力。不要再做一个大而全 SOC 平台。</p></div>
+    <div class="card"><span class="tag accent">调查层</span><h4>仅 AiSOC 完整</h4><p class="muted" style="font-size:13.5px">agent 真正去查证据、给 verdict：开源里最完整的是 AiSOC；SRE 侧 HolmesGPT/AURA 工程更成熟但不碰安全语义。</p></div>
+    <div class="card"><span class="tag high">大厂层</span><h4>闭源留窗口</h4><p class="muted" style="font-size:13.5px">MS MDASH 私有预览、Google/Wiz/Elastic 无对应开源 agentic SOC 调查器；大厂只放 runtime 治理工具。空位=窄而深的垂直 agent。</p></div>
+  </div>
+
+  <h3>4.3 个人项目差异化结论</h3>
+  <p>不要做又一个大 SOC 平台。选一个别人不做的纵深——<b>国内 WAF / 高防 / CC-DDoS + ES/Prom 并行取证</b>就是差异化；叠加三个叙事资产：<b>可离线一键复现</b>（fake/real seam 已踩在正确方向）、<b>可审计性</b>（Investigation Ledger / 证据引用 / OTel，安全场景下"能不能复盘每一步"比"准不准"先被客户问）、<b>MCP 化</b>（让 Claude/飞书/ASP 反过来调你，比自建入口省力）。Keep 可作上游而非竞品。</p>
+
+  <h3>4.4 重点画像卡</h3>
+  <div class="grid g2">
+    <div class="card"><span class="tag accent">最该学</span><h4>AiSOC（2,380★ · MIT · v14）</h4>
+      <ul style="font-size:13.5px" class="muted">
+        <li><b>Investigation Ledger</b>：每条 prompt/工具调用/引用/token 成本落账并可回放——本仓库 checkpoint/replay 思路一致，是它的核心卖点。</li>
+        <li><b>接地校验</b>：verdict 引用了证据里不存在的指标 → 自动降级人审，不自动关单。</li>
+        <li><b>make smoke / make demo.mp4</b>：16 容器一键起，8GB 内存可跑；内置 hero.gif + 3 分钟 demo.mp4 + 4 张真实截图。</li>
+        <li><b>诚实能力表</b>：专设 <code>docs/audit/REPOSITORY_REALITY.md</code>，明说哪些 Beta、哪些数字"未测量"而不是写 0；<code>make stats</code> 在 CI 里复核 README 每个数字。</li>
+      </ul></div>
+    <div class="card"><span class="tag info">工程标杆</span><h4>HolmesGPT（3,482★ · Apache-2.0 · CNCF）</h4>
+      <p class="muted" style="font-size:13.5px"><b>"PB 级数据不出 context"</b>：服务端过滤、JSON 树裁剪、工具输出 transformer、单工具内存上限、大结果落盘——把 agent 接到真实可观测数据时最容易翻车的点。sec-investigator 查 ES DSL 同理，不能让日志爆 context。Operator 24/7 主动巡检模式是叙事升级方向。</p></div>
+    <div class="card"><span class="tag info">工程标杆</span><h4>AURA（395★ · Apache-2.0 · Rust）</h4>
+      <p class="muted" style="font-size:13.5px">整个 agent 系统用可 review 的 <b>TOML 声明</b>（模型/团队/prompt/工具/审批策略/护栏全版本化）；<b>OTel 全链路 trace</b>；敏感动作 fail-closed（超时/拒绝/传输失败都默认不执行）。正好契合 AGENTS.md "code-level policy over giant prompts"。</p></div>
+    <div class="card"><span class="tag info">前端标杆</span><h4>Argus（1,145★ · Apache-2.0）+ Keep（12,367★）</h4>
+      <p class="muted" style="font-size:13.5px">Argus：CMDB 资产上下文与告警/工单/事件自动关联——正是 <code>asset_resolution</code> 节点该做的事，它做成了一等公民模块；Next.js15+AntD5，公开 live demo。Keep：provider 生态 100+ 集成——sec-investigator 可作为 Keep 的一个 workflow/tool 后端被调用，而非正面竞争。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 5 前端范式 ============ -->
+<section id="frontend">
+<div class="wrap">
+  <h2><span class="no">05</span>前端标杆与范式</h2>
+  <p class="lead">17 个 agent 前端项目总表。Flowise / open-canvas 已归档；Chainlit / Phoenix 为约数（见附录诚信声明）。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>项目</th><th class="num">Stars</th><th>License</th><th>技术栈</th><th>形态</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><a href="https://github.com/n8n-io/n8n">n8n</a></td><td class="num">205.9k</td><td>Sustainable Use</td><td>TS/Vue+Node</td><td>节点式工作流画布</td></tr>
+      <tr><td>2</td><td><a href="https://github.com/Significant-Gravitas/AutoGPT">AutoGPT</a></td><td class="num">187.5k</td><td>MIT 类</td><td>Next.js+TS</td><td>agent 构建器+市场</td></tr>
+      <tr><td>3</td><td><a href="https://github.com/langgenius/dify">Dify</a></td><td class="num">~157.4k 交叉核实</td><td>Dify 开源版</td><td>Next.js+Tailwind</td><td>LLMOps/工作流/聊天</td></tr>
+      <tr><td>4</td><td><a href="https://github.com/open-webui/open-webui">Open WebUI</a></td><td class="num">153.3k</td><td>MIT 类</td><td>Svelte+Tailwind</td><td>自托管 ChatGPT 替代</td></tr>
+      <tr><td>5</td><td><a href="https://github.com/browser-use/browser-use">browser-use</a></td><td class="num">115.9k</td><td>MIT</td><td>Py 核心+React UI</td><td>浏览器自动化 agent</td></tr>
+      <tr><td>6</td><td><a href="https://github.com/OpenHands/OpenHands">OpenHands</a></td><td class="num">~88k 交叉核实</td><td>MIT</td><td>React+Vite+Tailwind</td><td>Devin 类工作台</td></tr>
+      <tr><td>7</td><td><a href="https://github.com/lobehub/lobe-chat">LobeChat</a></td><td class="num">~82k 交叉核实</td><td>Lobe 社区版</td><td>Next.js+antd-style</td><td>现代设计感聊天</td></tr>
+      <tr><td>8</td><td><a href="https://github.com/FlowiseAI/Flowise">Flowise</a> ⚠已归档</td><td class="num">55.5k</td><td>Apache-2.0</td><td>React+reactflow</td><td>可视化 agent 搭建</td></tr>
+      <tr><td>9</td><td><a href="https://github.com/langchain-ai/langgraph">LangGraph</a></td><td class="num">42.3k</td><td>MIT</td><td>Py 核心 / Studio TS</td><td>有状态 agent 运行时</td></tr>
+      <tr><td>10</td><td><a href="https://github.com/CopilotKit/CopilotKit">CopilotKit</a></td><td class="num">~37.6k 交叉核实</td><td>MIT</td><td>React+AG-UI</td><td>in-app copilot</td></tr>
+      <tr><td>11</td><td><a href="https://github.com/langfuse/langfuse">Langfuse</a></td><td class="num">~35.1k 交叉核实</td><td>MIT</td><td>Next.js</td><td>LLM 可观测/trace</td></tr>
+      <tr><td>12</td><td><a href="https://github.com/vercel/ai">Vercel AI SDK</a></td><td class="num">26.6k</td><td>Apache-2.0</td><td>TS 框架无关</td><td>流式 SDK</td></tr>
+      <tr><td>13</td><td><a href="https://github.com/vercel/chatbot">ai-chatbot 模板</a></td><td class="num">21.0k</td><td>Vercel 模板</td><td>Next.js+shadcn</td><td>聊天+artifact 范本</td></tr>
+      <tr><td>14</td><td><a href="https://github.com/assistant-ui/assistant-ui">assistant-ui</a></td><td class="num">12.4k</td><td>MIT</td><td>React+Radix/shadcn</td><td>headless 聊天组件库</td></tr>
+      <tr><td>15</td><td><a href="https://github.com/Chainlit/chainlit">Chainlit</a></td><td class="num">~12k 约数</td><td>Apache-2.0</td><td>Py+自带 React</td><td>几行 Py 起 UI</td></tr>
+      <tr><td>16</td><td><a href="https://github.com/Arize-ai/phoenix">Arize Phoenix</a></td><td class="num">~11.6k 约数</td><td>Elastic-2.0</td><td>Py+React</td><td>LLM tracing/eval</td></tr>
+      <tr><td>17</td><td><a href="https://github.com/langchain-ai/open-canvas">open-canvas</a> ⚠已归档</td><td class="num">5.5k</td><td>MIT</td><td>Next.js+AI SDK</td><td>聊天+右侧画布</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.1 五个"该抄的范式"</h3>
+  <div class="grid g2">
+    <div class="card"><span class="tag accent">① Dify</span><h4>节点状态灯 + 节点日志抽屉</h4>
+      <p class="muted" style="font-size:13.5px">运行时画布每个节点亮灯：灰=pending、蓝=running、绿=success、红=error，节点下方展开输入/输出/耗时日志。<br><b>映射：</b>现有 PipelineRail 升级为横向 stepper，每个 LangGraph 节点一颗状态灯，running 节点 1.5s 呼吸光晕，点击节点过滤/展开该节点事件抽屉。</p></div>
+    <div class="card"><span class="tag accent">② OpenHands</span><h4>多资产事件泳道</h4>
+      <p class="muted" style="font-size:13.5px">左栏垂直事件流，每条带时间戳+可折叠参数，思考链默认折叠一行。<br><b>映射：</b>EventLog 升级为按资产分组的泳道——dispatch_machine_checks / dispatch_security_checks 扇出的 N 个 worker 各一条竖轨，工具调用以 Step 卡 append。这是 sec-investigator 区别于单 agent demo 的核心视觉卖点。</p></div>
+    <div class="card"><span class="tag accent">③ Langfuse</span><h4>可折叠 trace span 树 + 右侧 JSON 抽屉</h4>
+      <p class="muted" style="font-size:13.5px">左侧 span 树嵌套缩进，右侧 span 详情（输入/输出 JSON、token、延迟、错误堆栈），上方 waterfalls 时间条。<br><b>映射：</b>工具调用痕迹做成 span 树：supervisor → machine_check(asset A) → ES 查询 → 命中证据；右侧抽屉看原始请求/响应。这是"安全调查可信度"的视觉载体。</p></div>
+    <div class="card"><span class="tag accent">④ CopilotKit / AG-UI</span><h4>Step 折叠卡 + 事件分类</h4>
+      <p class="muted" style="font-size:13.5px">工具调用自动渲染成 Step Card：左图标+工具名+状态点（spinner→check）+右侧耗时，点开 mono 入参/出参。<br><b>映射：</b>直接照抄事件分类作为后端 SSE schema；Step 卡视觉就是工具调用卡模板。外加 LangGraph Studio 范式：approval_gate 触发时在事件轨插入内联审批卡（风险摘要+受影响资产+批准/驳回），批准即 <code>Command(resume=true)</code>。</p></div>
+    <div class="card"><span class="tag accent">⑤ Vercel ai-chatbot</span><h4>artifact 侧栏流式报告</h4>
+      <p class="muted" style="font-size:13.5px">左聊天、右 artifact 面板，报告边推理边流式渲染，可切 markdown 预览/源码，完成后可导出。<br><b>映射：</b>ReportCard 升级为独立 artifact 面板：reporter 执行时 markdown 报告在右侧实时流式渲染（react-markdown+remark-gfm+shiki），完成后给"导出 MD/PDF"按钮——收尾画面。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 6 六维差距 ============ -->
+<section id="gap">
+<div class="wrap">
+  <h2><span class="no">06</span>多维度差距分析</h2>
+  <p class="lead">六维评分（5 分制）：当前 vs 门面目标。综合 3.2/5。</p>
+
+  <div class="figure">
+    <svg width="480" height="440" viewBox="0 0 480 440" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="11">
+      <!-- radar: cx=240 cy=220 rmax=140, scale 28/unit -->
+      <!-- rings -->
+      <g fill="none" stroke="#27272a">
+        <polygon points="240,192 264.2,206 264.2,234 240,248 215.8,234 215.8,206"/>
+        <polygon points="240,164 288.3,192 288.3,248 240,276 191.7,248 191.7,192"/>
+        <polygon points="240,136 312.5,178 312.5,262 240,304 167.5,262 167.5,178"/>
+        <polygon points="240,108 336.6,164 336.6,276 240,332 143.4,276 143.4,164"/>
+        <polygon points="240,80 360.8,150 360.8,290 240,360 119.2,290 119.2,150" stroke="#3f3f46"/>
+      </g>
+      <!-- axes -->
+      <g stroke="#3f3f46">
+        <line x1="240" y1="220" x2="240" y2="80"/>
+        <line x1="240" y1="220" x2="360.8" y2="150"/>
+        <line x1="240" y1="220" x2="360.8" y2="315"/>
+        <line x1="240" y1="220" x2="240" y2="360"/>
+        <line x1="240" y1="220" x2="119.2" y2="315"/>
+        <line x1="240" y1="220" x2="119.2" y2="150"/>
+      </g>
+      <!-- target polygon (4.5,4.5,4.5,4.5,4.0,3.0): r=126,126,126,126,112,84 -->
+      <!-- pts: (240,94); (240+109.2,220-63)=(349.2,157); (349.2,283); (240,346); (240-97.1,220+56)=(142.9,276); (240-72.7,220-42)=(167.3,178) -->
+      <polygon points="240,94 349.2,157 349.2,283 240,346 142.9,276 167.3,178"
+               fill="rgba(255,255,255,0.05)" stroke="#a1a1aa" stroke-dasharray="4 3" stroke-width="1.5"/>
+      <!-- current (4.5,4.0,2.0,3.5,3.0,1.5): r=126,112,56,98,84,42 -->
+      <!-- (240,94); (240+97.1,220-56)=(337.1,164); (240+48.5,220+28)=(288.5,248); (240,318); (240-72.7,220+42)=(167.3,262); (240-36.4,220-21)=(203.6,199) -->
+      <polygon points="240,94 337.1,164 288.5,248 240,318 167.3,262 203.6,199"
+               fill="rgba(16,185,129,0.18)" stroke="#10b981" stroke-width="2"/>
+      <!-- labels -->
+      <text x="240" y="68" fill="#e4e4e7" text-anchor="middle">架构叙事 4.5</text>
+      <text x="378" y="146" fill="#e4e4e7">工程质量 4.0</text>
+      <text x="378" y="296" fill="#ef4444">可演示性 2.0</text>
+      <text x="240" y="380" fill="#e4e4e7" text-anchor="middle">视觉完成度 3.5</text>
+      <text x="100" y="296" fill="#e4e4e7" text-anchor="middle">文档自洽 3.0</text>
+      <text x="96" y="146" fill="#ef4444">落地就绪 1.5</text>
+      <!-- legend -->
+      <rect x="150" y="408" width="12" height="3" fill="#10b981"/>
+      <text x="168" y="413" fill="#a1a1aa">当前</text>
+      <line x1="240" y1="410" x2="258" y2="410" stroke="#a1a1aa" stroke-dasharray="4 3"/>
+      <text x="264" y="413" fill="#a1a1aa">门面目标</text>
+    </svg>
+    <div class="cap">图 6 · 雷达图：绿实=当前，灰虚=门面目标。两个塌陷维度：可演示性（2.0→4.5）与落地就绪（1.5→3.0）。</div>
+  </div>
+
+  <h3>6.1 维度评分横条</h3>
+  <div class="card">
+    <div class="bar-row"><span>架构叙事</span><div class="bar-track"><div class="bar-cur" style="width:90%"></div><div class="bar-tgt" style="left:90%"></div></div><span class="bar-val">4.5/4.5</span></div>
+    <div class="bar-row"><span>工程质量</span><div class="bar-track"><div class="bar-cur" style="width:80%"></div><div class="bar-tgt" style="left:90%"></div></div><span class="bar-val">4.0/4.5</span></div>
+    <div class="bar-row"><span style="color:#fca5a5">可演示性</span><div class="bar-track"><div class="bar-cur" style="width:40%;background:#ef4444"></div><div class="bar-tgt" style="left:90%"></div></div><span class="bar-val" style="color:#fca5a5">2.0/4.5</span></div>
+    <div class="bar-row"><span>视觉完成度</span><div class="bar-track"><div class="bar-cur" style="width:70%"></div><div class="bar-tgt" style="left:90%"></div></div><span class="bar-val">3.5/4.5</span></div>
+    <div class="bar-row"><span>文档自洽</span><div class="bar-track"><div class="bar-cur" style="width:60%"></div><div class="bar-tgt" style="left:80%"></div></div><span class="bar-val">3.0/4.0</span></div>
+    <div class="bar-row"><span style="color:#fca5a5">落地就绪</span><div class="bar-track"><div class="bar-cur" style="width:30%;background:#ef4444"></div><div class="bar-tgt" style="left:60%"></div></div><span class="bar-val" style="color:#fca5a5">1.5/3.0</span></div>
+    <div class="small" style="margin-top:8px">竖线=门面目标分。</div>
+  </div>
+
+  <h3>6.2 逐维差距</h3>
+  <div class="grid g2">
+    <div class="card"><h4 style="margin-top:0">架构叙事 4.5 → 4.5（保持）</h4><p class="muted" style="font-size:13.5px">三层分层、状态机路由、Send fan-out/rollup、profile 模型、fake seam——骨架干净且真做到了。这是最大亮点，继续讲。</p></div>
+    <div class="card"><h4 style="margin-top:0">工程质量 4.0 → 4.5</h4><p class="muted" style="font-size:13.5px">扣在：4 处模块级 adapter 闭包违反自身硬规则4；integration/evals 空包；17MB db 裸奔。修掉即满。</p></div>
+    <div class="card" style="border-color:rgba(239,68,68,0.4)"><h4 style="margin-top:0;color:#fca5a5">可演示性 2.0 → 4.5（最大缺口）</h4><p class="muted" style="font-size:13.5px">真跑：报告降级、审批门不弹、日志发现空、无图表。面试官按 README 点一遍会看到降级占位页。A 线全部围绕它。</p></div>
+    <div class="card"><h4 style="margin-top:0">视觉完成度 3.5 → 4.5</h4><p class="muted" style="font-size:13.5px">纸墨风有品味，但无图表/无暗色/无 markdown。换成暗色安全控制台 + 状态灯流水线 + 泳道 + artifact 报告即满。</p></div>
+    <div class="card"><h4 style="margin-top:0">文档自洽 3.0 → 4.0</h4><p class="muted" style="font-size:13.5px">incidents/position 文档质量高；但 README 测试数（495/6s vs 实测 508/21s）失真。学 AiSOC <code>make stats</code> 在 CI 里核对 README 数字。</p></div>
+    <div class="card" style="border-color:rgba(239,68,68,0.4)"><h4 style="margin-top:0;color:#fca5a5">落地就绪 1.5 → 3.0</h4><p class="muted" style="font-size:13.5px">无鉴权/RBAC/限流/metrics/OTel/CI/Docker；webhook 内存去重重启失效；飞书闭环空转。B 线围绕它。</p></div>
+  </div>
+
+  <h3>6.3 P1/P2 工程问题清单</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th style="width:70px">级别</th><th>问题</th><th>证据</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag high">P1</span></td><td>模块级单例 4 处，全仓无 aclose()，违反 AGENTS.md 硬规则4</td><td><code>es_tools.py:716 ES_TOOLS=_make_es_tools()</code> · <code>prom_tools.py:277</code> · <code>security_tools.py:236</code> · <code>rag/rag_tools.py:89</code></td></tr>
+      <tr><td><span class="tag high">P1</span></td><td>测试金字塔断腰：integration/evals 空包；replay pre-inject+mock LLM</td><td>tests/integration、tests/evals 仅 __init__.py</td></tr>
+      <tr><td><span class="tag high">P1</span></td><td>17MB checkpoint 库裸躺仓库根，无限增长</td><td>sec_investigator.db：checkpoints 1265 行 / writes 2889 行</td></tr>
+      <tr><td><span class="tag medium">P2</span></td><td>死代码：query_customer_business_desc 读不存在的 resource/</td><td><code>es_tools.py</code> 引用 <code>resource/special_customer.json</code>，src 下无 resource/</td></tr>
+      <tr><td><span class="tag medium">P2</span></td><td>webhook 内存去重，重启失效、多 worker 不成立</td><td><code>surfaces/webhook/dedup.py</code></td></tr>
+      <tr><td><span class="tag medium">P2</span></td><td>飞书闭环空转：webhook 配置为空</td><td><code>surfaces/feishu/delivery.py</code></td></tr>
+      <tr><td><span class="tag medium">P2</span></td><td>RAG 同步 pymilvus/pymongo 阻塞，fake 模式短路成关键词匹配</td><td>todo 自记 P2</td></tr>
+      <tr><td><span class="tag medium">P2</span></td><td>无鉴权/RBAC/限流/metrics；无 Docker/CI</td><td>根目录无 Dockerfile / .github</td></tr>
+      <tr><td><span class="tag medium">P2</span></td><td>README 数字失真（495/6s vs 508/21s）；app.py 模块级 app 与 docstring 冲突</td><td>README.md:104 · app.py:54</td></tr>
+    </tbody>
+  </table></div>
+</div>
+</section>
+
+<!-- ============ 7 技术选型 ============ -->
+<section id="stack">
+<div class="wrap">
+  <h2><span class="no">07</span>技术选型建议</h2>
+
+  <h3>7.1 前端选型结论</h3>
+  <div class="card" style="border-color:rgba(16,185,129,0.4)">
+    <p style="margin:0"><b>主干：Tailwind CSS + shadcn/ui 自研（React19+Vite6 原地升级）。</b>
+    不选 Chainlit（布局被框架锁死，与"前端独立 Vite+FastAPI"方向相反）；
+    不选 CopilotKit 当外壳（产品形态是 copilot 侧栏，套上去控制台一眼"又一个 copilot demo"，损失作品集辨识度）；
+    assistant-ui 仅用于可选 supervisor 对话切片（Thread/Composer copy 到自己仓库）。
+    CopilotKit 的 <b>AG-UI 事件分类和 Step 卡视觉是免费教科书，必须抄</b>。</p>
+  </div>
+
+  <h4>配套库</h4>
+  <div class="table-wrap"><table>
+    <thead><tr><th>用途</th><th>选择</th><th>备注</th></tr></thead>
+    <tbody>
+      <tr><td>状态管理</td><td>Zustand</td><td>agent 前端事实标准，比 Redux 轻、比 Context 可控</td></tr>
+      <tr><td>图表</td><td>recharts（或手写 SVG）</td><td>shadcn 官方图表底座；资产耗时/严重度分布</td></tr>
+      <tr><td>Markdown 报告</td><td>react-markdown + remark-gfm + shiki</td><td>artifact 面板流式渲染</td></tr>
+      <tr><td>SSE 客户端</td><td>原生 EventSource（或 POST data: 帧手写解析）</td><td>后端已是 SSE；非安全上下文 UUID 兜底已有</td></tr>
+      <tr><td>动效</td><td>framer-motion 克制使用</td><td>仅状态灯/卡片入场，150–200ms</td></tr>
+      <tr><td>字体</td><td>Geist/Inter + JetBrains Mono（本地化打包）</td><td>禁外部 CDN 字体</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>7.2 协议层：SSE 事件 schema 向 AG-UI 对齐</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>AG-UI 事件</th><th>sec-investigator 现有事件</th><th>动作</th></tr></thead>
+    <tbody>
+      <tr><td><code>RUN_STARTED / RUN_FINISHED</code></td><td>调查启动/结束</td><td>对齐命名</td></tr>
+      <tr><td><code>STEP_STARTED / STEP_FINISHED</code></td><td>node status（active/done）</td><td>对齐；携带 node_name / asset_id</td></tr>
+      <tr><td><code>TOOL_CALL_START / ARGS / END / RESULT</code></td><td>ToolCallEvent（子图内写出，未冒泡）</td><td><b>修子图冒泡</b>（subgraphs=True 或 worker 节点重发）；拆成四阶段</td></tr>
+      <tr><td><code>STATE_SNAPSHOT / DELTA</code></td><td>asset_findings / findings 更新</td><td>对齐为增量 delta</td></tr>
+      <tr><td><code>CUSTOM</code></td><td>evidence / finding / approval_request</td><td>用 CUSTOM 携带类型标签</td></tr>
+      <tr><td><code>TEXT_MESSAGE_*</code></td><td>reporter 流式 markdown</td><td>报告 artifact 面板消费</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>7.3 暗色安全控制台视觉 token（直接照抄实现）</h3>
+  <div class="card">
+<pre style="font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#d4d4d8;overflow-x:auto;margin:0">
+--bg            #09090b   /* zinc-950 */
+--bg-elev       #101013   /* 卡片 */
+--bg-elev2      #16161a   /* 表头/悬浮 */
+--border        rgba(255,255,255,0.08)   /* 1px 半透明描边 */
+--border-strong rgba(255,255,255,0.14)
+--text          #e4e4e7
+--text-dim      #a1a1aa
+--text-mute     #71717a
+--accent        #10b981   /* 单一品牌绿 */
+--critical      #ef4444   /* P0 */
+--high          #f97316   /* P1 */
+--medium        #eab308   /* P2 */
+--low           #22c55e
+--info          #3b82f6
+--sans  "PingFang SC","Microsoft YaHei",system-ui
+--mono  Consolas,"Cascadia Code","JetBrains Mono",monospace
+/* 状态灯：pending 灰 / running 蓝脉冲(1.5s 呼吸) / success 绿 / error 红 */
+/* 间距基准 4px；卡片圆角 8–10px；动效 150–200ms；禁渐变/玻璃拟态/粒子 */
+</pre>
+  </div>
+
+  <h3>7.4 后端 P0 修复方向（不写代码，写要点）</h3>
+  <div class="grid g2">
+    <div class="card"><span class="tag critical">P0</span><h4>reporter structured output 稳定性</h4><p class="muted" style="font-size:13.5px">schema 解析失败时重试/换更强模型；降级路径不应是常态。当前两次实跑都走降级，说明 report_writer profile 与 schema 不匹配。</p></div>
+    <div class="card"><span class="tag critical">P0</span><h4>critical 判定直接吃工具产出的结构化数字</h4><p class="muted" style="font-size:13.5px">不要依赖 LLM 在 finding 里转述 rate_5xx/rate_4xx/cpu_pct——worker 工具查询结果本身就是结构化数字，deterministic classifier 直接读工具输出，LLM 只做叙事。这是审批门能触发的前提。</p></div>
+    <div class="card"><span class="tag high">P0</span><h4>修 fixture 数值自洽</h4><p class="muted" style="font-size:13.5px">incident2 5xx 改回与 incidents.md 一致的 ~63%，或反过来改叙事——二选一，消除 62.9% vs 22.9% 矛盾。</p></div>
+    <div class="card"><span class="tag high">P0</span><h4>修子图事件冒泡</h4><p class="muted" style="font-size:13.5px">父图 astream 开 <code>subgraphs=True</code>，或在 worker 节点里把 ToolCallEvent 重发到父图 custom stream——让 UI 时间线有工具调用。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 8 路线图 ============ -->
+<section id="roadmap">
+<div class="wrap">
+  <h2><span class="no">08</span>双线改造路线图</h2>
+  <p class="lead">A 线·作品集门面（2–4 周）先打透演示闭环；B 线·落地基础（1–3 月）并行推进。色块=优先级。</p>
+
+  <div class="legend">
+    <span class="l-p0">P0 必须先做</span>
+    <span class="l-p1">P1 门面主体</span>
+    <span class="l-p2">P2 锦上添花</span>
+  </div>
+  <div class="figure">
+    <svg width="1080" height="320" viewBox="0 0 1080 320" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace" font-size="11">
+      <!-- lane labels -->
+      <text x="10" y="60" fill="#10b981" font-weight="bold">A线</text>
+      <text x="10" y="76" fill="#71717a" font-size="10">作品集门面</text>
+      <text x="10" y="200" fill="#3b82f6" font-weight="bold">B线</text>
+      <text x="10" y="216" fill="#71717a" font-size="10">落地基础</text>
+      <!-- week grid: x0=120, week=62px, 14 weeks -->
+      <g stroke="#27272a">
+        <line x1="120" y1="30" x2="120" y2="315"/>
+        <line x1="182" y1="30" x2="182" y2="315"/>
+        <line x1="244" y1="30" x2="244" y2="315"/>
+        <line x1="306" y1="30" x2="306" y2="315"/>
+        <line x1="368" y1="30" x2="368" y2="315"/>
+        <line x1="430" y1="30" x2="430" y2="315"/>
+        <line x1="492" y1="30" x2="492" y2="315"/>
+        <line x1="554" y1="30" x2="554" y2="315"/>
+        <line x1="616" y1="30" x2="616" y2="315"/>
+        <line x1="678" y1="30" x2="678" y2="315"/>
+        <line x1="740" y1="30" x2="740" y2="315"/>
+        <line x1="802" y1="30" x2="802" y2="315"/>
+        <line x1="864" y1="30" x2="864" y2="315"/>
+        <line x1="926" y1="30" x2="926" y2="315"/>
+        <line x1="988" y1="30" x2="988" y2="315"/>
+      </g>
+      <g fill="#71717a" font-size="9">
+        <text x="120" y="20">w1</text><text x="244" y="20">w3</text><text x="368" y="20">w5</text>
+        <text x="492" y="20">w7</text><text x="616" y="20">w9</text><text x="740" y="20">w11</text><text x="864" y="20">w13</text>
+      </g>
+      <!-- A lane y=55 h=34 -->
+      <rect x="120" y="45" width="62" height="30" rx="4" fill="#ef4444"/>
+      <text x="151" y="64" fill="#fff" text-anchor="middle" font-size="10">A0</text>
+      <rect x="182" y="45" width="93" height="30" rx="4" fill="#ef4444"/>
+      <text x="228" y="64" fill="#fff" text-anchor="middle" font-size="10">A1</text>
+      <rect x="275" y="45" width="155" height="30" rx="4" fill="#f97316"/>
+      <text x="352" y="64" fill="#fff" text-anchor="middle" font-size="10">A2 暗色控制台改造</text>
+      <rect x="368" y="80" width="93" height="26" rx="4" fill="#f97316"/>
+      <text x="414" y="97" fill="#fff" text-anchor="middle" font-size="10">A3 README</text>
+      <rect x="399" y="110" width="93" height="26" rx="4" fill="#f97316"/>
+      <text x="445" y="127" fill="#fff" text-anchor="middle" font-size="10">A4 Compose</text>
+      <rect x="430" y="140" width="93" height="26" rx="4" fill="#eab308"/>
+      <text x="476" y="157" fill="#000" text-anchor="middle" font-size="10">A5 GIF</text>
+      <!-- B lane y=190 -->
+      <rect x="120" y="180" width="186" height="30" rx="4" fill="#f97316"/>
+      <text x="213" y="199" fill="#fff" text-anchor="middle" font-size="10">B1 adapter 生命周期</text>
+      <rect x="244" y="216" width="310" height="30" rx="4" fill="#f97316"/>
+      <text x="399" y="235" fill="#fff" text-anchor="middle" font-size="10">B2 真 worker E2E + replay/eval</text>
+      <rect x="740" y="216" width="248" height="30" rx="4" fill="#eab308"/>
+      <text x="864" y="235" fill="#000" text-anchor="middle" font-size="10">B7 大工具预算 + 接地校验</text>
+      <rect x="368" y="252" width="248" height="28" rx="4" fill="#eab308"/>
+      <text x="492" y="270" fill="#000" text-anchor="middle" font-size="10">B3 auth/RBAC/限流</text>
+      <rect x="492" y="180" width="310" height="30" rx="4" fill="#eab308"/>
+      <text x="647" y="199" fill="#000" text-anchor="middle" font-size="10">B5 MCP server + webhook 持久化 + 飞书卡片</text>
+      <rect x="368" y="284" width="372" height="28" rx="4" fill="#eab308"/>
+      <text x="554" y="302" fill="#000" text-anchor="middle" font-size="10">B4 OTel + 审计日志 + checkpoint 策略</text>
+      <rect x="760" y="284" width="208" height="28" rx="4" fill="#eab308"/>
+      <text x="864" y="302" fill="#000" text-anchor="middle" font-size="10">B6 CI + Helm/Compose</text>
+    </svg>
+    <div class="cap">图 8 · 泳道时间线。A 线 2–4 周内出可对外的 demo；B 线 1–3 月铺落地基础。</div>
+  </div>
+
+  <h3>8.1 A 线·作品集门面（2–4 周）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>优先级</th><th>工时</th><th>任务</th><th>收益</th></tr></thead>
+    <tbody>
+      <tr><td>A0</td><td><span class="tag critical">P0</span></td><td>1–2 天</td><td>修通"critical→审批→批准→结构化报告"完整闭环 + 修 fixture 数值</td><td>打掉演示穿帮四连的根因</td></tr>
+      <tr><td>A1</td><td><span class="tag critical">P0</span></td><td>2–3 天</td><td>修 tool_call 事件冒泡 + 按资产泳道呈现</td><td>"可观测的代理动作"卖点兑现</td></tr>
+      <tr><td>A2</td><td><span class="tag high">P1</span></td><td>3–5 天</td><td>暗色控制台前端改造：状态灯流水线/证据卡/span 树/流式 markdown 报告/审批卡/空状态 hero</td><td>30 秒门面观感，超过多数 CLI 派竞品</td></tr>
+      <tr><td>A3</td><td><span class="tag high">P1</span></td><td>1–2 天</td><td>README 销售页化：徽章、GIF、3–4 张截图、30 秒一句话、诚实能力表</td><td>建立"这东西真能跑"的信任</td></tr>
+      <tr><td>A4</td><td><span class="tag high">P1</span></td><td>1 天</td><td>Docker Compose 一键起 + make smoke 式自检脚本</td><td>学 AiSOC，离线可复现</td></tr>
+      <tr><td>A5</td><td><span class="tag medium">P2</span></td><td>—</td><td>15 秒录屏 GIF</td><td>README 顶部，比 star 数更决定印象</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>8.2 B 线·落地基础（1–3 月）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>任务</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td>adapter 生命周期：工厂闭包持有 + aclose()，删 4 处模块级单例（es_tools:716 / prom_tools:277 / security_tools:236 / rag_tools:89）</td></tr>
+      <tr><td>B2</td><td>真 worker E2E + replay/eval 套件：填 tests/integration、tests/evals，跨模型 eval，公开诚实数字（赛道稀缺信任资产）</td></tr>
+      <tr><td>B3</td><td>auth / RBAC / 租户 namespacing / 限流扩展点</td></tr>
+      <tr><td>B4</td><td>OTel trace + 审计日志 + checkpoint 保留策略（db 出仓 .gitignore）</td></tr>
+      <tr><td>B5</td><td>MCP server 化 + webhook 持久化去重 + 飞书富卡片</td></tr>
+      <tr><td>B6</td><td>CI（测试 + README 数字核对 lint，学 AiSOC make stats）+ Helm/Compose 部署</td></tr>
+      <tr><td>B7</td><td>大工具输出预算/落盘（学 HolmesGPT，ES DSL 结果裁剪不爆 context）+ 接地校验（学 AiSOC，verdict 引用不存在证据→降级人审）</td></tr>
+    </tbody>
+  </table></div>
+</div>
+</section>
+
+<!-- ============ 9 演示脚本 ============ -->
+<section id="demo">
+<div class="wrap">
+  <h2><span class="no">09</span>演示脚本建议</h2>
+  <div class="grid g2">
+    <div class="card"><span class="tag accent">30 秒版</span><h4>一句话抓住</h4>
+      <p class="muted" style="font-size:13.5px">点 incident2（api2.xs2027.cn）→ 看流水线状态灯转、多资产泳道并行 append 工具调用 → critical 触发审批卡 → 点批准 → 右侧 markdown 报告流式出。三句话收尾：<b>"约束自治——critical 才停人审；证据可回放——每步工具调用都在；一键离线复现——fake 数据源无需 VPN。"</b></p></div>
+    <div class="card"><span class="tag info">3 分钟版</span><h4>深一层</h4>
+      <p class="muted" style="font-size:13.5px">先 30 秒跑通 incident2；再展开 span 树点一条 ES 查询看原始 DSL/响应 JSON；切到 incident1 讲"tool budget exhausted 是诚实暴露，不是 bug 演示"；最后讲架构：三层分层、profile 模型、fake/real seam、508 离线测试。强调三句话同上，但补一句：<b>"这个项目和别的 copilot demo 的区别是——它有自己的取证纵深，不是套壳聊天。"</b></p></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 10 附录 ============ -->
+<section id="appendix">
+<div class="wrap">
+  <h2><span class="no">10</span>附录</h2>
+
+  <h3>10.1 数据来源与核实声明</h3>
+  <ul class="muted" style="font-size:13.5px">
+    <li>安全赛道 star 数：GitHub REST API（<code>api.github.com/repos/{owner}/{repo}</code>）2026-09-30 当日实时查询，统一标注"截至 2026-09-30"。</li>
+    <li>前端标杆 star 数：直接 API 实时返回的有 n8n / AutoGPT / Open WebUI / browser-use / Flowise / langgraph / vercel-ai / vercel-chatbot / assistant-ui / open-canvas。</li>
+    <li>API 返回陈旧缓存快照的，已用 2026-09 第三方独立源交叉校正并标"交叉核实"：Dify ~157.4k、LobeChat ~82k、CopilotKit ~37.6k、Langfuse ~35.1k、OpenHands ~88k。</li>
+    <li>Chainlit（~12k）、Phoenix（~11.6k）未在当日取到 API 实时值，数字来自 2026-07 至 2026-09-28 第三方统计，标"约"，未精确核实到当日。</li>
+    <li>Flowise 与 open-canvas 仓库已归档（archived=true），范式可参考但不应作为新依赖。</li>
+    <li>实跑环境：Windows，<code>uv run sec-investigator</code>，DATA_SOURCE=fake，GLM OpenAI 兼容端点，FastAPI :18230，浏览器实跑两次完整调查。审计日期 2026-09-30。</li>
+    <li>项目现状数字（70 源文件 / 1285 行前端 / 508 测试 20.66s / 17MB db）来自只读审计与实跑。</li>
+  </ul>
+
+  <h3>10.2 参考链接清单</h3>
+  <div class="grid g2" style="font-size:13.5px">
+    <div>
+      <h4>安全赛道</h4>
+      <ul class="muted">
+        <li><a href="https://github.com/keephq/keep">keephq/keep</a></li>
+        <li><a href="https://github.com/robusta-dev/holmesgpt">robusta-dev/holmesgpt</a></li>
+        <li><a href="https://github.com/robusta-dev/robusta">robusta-dev/robusta</a></li>
+        <li><a href="https://github.com/beenuar/AiSOC">beenuar/AiSOC</a></li>
+        <li><a href="https://github.com/FunnyWolf/agentic-soc-platform">FunnyWolf/agentic-soc-platform</a> · <a href="https://asp.viperrtp.com">文档</a></li>
+        <li><a href="https://github.com/Sec-Link/Argus-Agentic-SOC-Platform">Sec-Link/Argus</a> · <a href="https://siem.seclink.info">live demo</a></li>
+        <li><a href="https://github.com/mezmo/aura">mezmo/aura</a></li>
+        <li><a href="https://github.com/SecurityClaw/SecurityClaw">SecurityClaw/SecurityClaw</a></li>
+        <li><a href="https://github.com/zhadyz/AI_SOC">zhadyz/AI_SOC</a></li>
+        <li><a href="https://github.com/volcengine/veaiops">volcengine/veaiops</a></li>
+        <li><a href="https://github.com/vigil-agency/vigil">vigil-agency/vigil</a> · <a href="https://vigilsoc.org">vigilsoc.org</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>前端标杆</h4>
+      <ul class="muted">
+        <li><a href="https://github.com/n8n-io/n8n">n8n</a> · <a href="https://n8n.io">n8n.io</a></li>
+        <li><a href="https://github.com/Significant-Gravitas/AutoGPT">AutoGPT</a> · <a href="https://agpt.co">agpt.co</a></li>
+        <li><a href="https://github.com/langgenius/dify">Dify</a> · <a href="https://dify.ai">dify.ai</a> · <a href="https://cloud.dify.ai">cloud demo</a></li>
+        <li><a href="https://github.com/open-webui/open-webui">Open WebUI</a> · <a href="https://openwebui.com">openwebui.com</a></li>
+        <li><a href="https://github.com/browser-use/browser-use">browser-use</a> · <a href="https://browser-use.com">browser-use.com</a></li>
+        <li><a href="https://github.com/OpenHands/OpenHands">OpenHands</a> · <a href="https://www.openhands.dev">openhands.dev</a></li>
+        <li><a href="https://github.com/lobehub/lobe-chat">LobeChat</a> · <a href="https://chat-preview.lobehub.com">preview</a></li>
+        <li><a href="https://github.com/FlowiseAI/Flowise">Flowise（归档）</a> · <a href="https://flowiseai.com">flowiseai.com</a></li>
+        <li><a href="https://github.com/langchain-ai/langgraph">LangGraph</a> · <a href="https://docs.langchain.com">docs</a></li>
+        <li><a href="https://github.com/CopilotKit/CopilotKit">CopilotKit</a> · <a href="https://copilotkit.ai">copilotkit.ai</a> · <a href="https://docs.copilotkit.ai">docs</a></li>
+        <li><a href="https://github.com/langfuse/langfuse">Langfuse</a> · <a href="https://langfuse.com">langfuse.com</a></li>
+        <li><a href="https://github.com/vercel/ai">Vercel AI SDK</a> · <a href="https://ai-sdk.dev">ai-sdk.dev</a></li>
+        <li><a href="https://github.com/vercel/chatbot">ai-chatbot</a> · <a href="https://chatbot.ai-sdk.dev">demo</a></li>
+        <li><a href="https://github.com/assistant-ui/assistant-ui">assistant-ui</a> · <a href="https://www.assistant-ui.com">assistant-ui.com</a></li>
+        <li><a href="https://github.com/Chainlit/chainlit">Chainlit</a> · <a href="https://docs.chainlit.io">docs</a></li>
+        <li><a href="https://github.com/Arize-ai/phoenix">Arize Phoenix</a> · <a href="https://phoenix.arize.com">phoenix.arize.com</a></li>
+        <li><a href="https://github.com/langchain-ai/open-canvas">open-canvas（归档）</a> · <a href="https://opencanvas.langchain.com">demo</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer>
+<div class="wrap small">
+  sec-investigator 作品集差距分析报告 · 生成于 2026-09-30 · 单文件离线 HTML · 所有图表为手写内联 SVG · 唯一外部引用为 GitHub/官网超链接
+</div>
+</footer>
+
+<div class="lb" id="lb"><img alt="preview"></div>
+
+<script>
+// lightbox
+var lb=document.getElementById('lb'),lbImg=lb.querySelector('img');
+document.querySelectorAll('.gallery img').forEach(function(im){
+  im.addEventListener('click',function(){lbImg.src=im.src;lbImg.alt=im.alt;lb.classList.add('open');});
+});
+lb.addEventListener('click',function(){lb.classList.remove('open');lbImg.src='';});
+// scroll spy
+var links=document.querySelectorAll('nav.toc a[href^="#"]');
+var secs=Array.prototype.slice.call(links).map(function(a){return document.querySelector(a.getAttribute('href'));});
+window.addEventListener('scroll',function(){
+  var y=window.scrollY+80,idx=0;
+  secs.forEach(function(s,i){if(s&&s.offsetTop<=y)idx=i;});
+  links.forEach(function(a,i){a.classList.toggle('active',i===idx);});
+},{passive:true});
+</script>
+</body>
+</html>
