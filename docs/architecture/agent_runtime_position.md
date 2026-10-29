@@ -1,377 +1,115 @@
-# Agent Runtime Position
+# 架构、工作流与模型推理边界
 
-## Purpose
+更新：2026-10-29。本文描述当前代码；设计目标与尚未满足的约束分开说明。
 
-This document captures the architectural position behind `sec-investigator`.
+## 项目定位
 
-It is not a product pitch. It is a design statement about how the system should be understood, what problems it is trying to solve, and why the current rewrite direction is structurally different from the old KKS approach.
+`sec-investigator` 是从实习阶段企业安全运营场景抽离的 Agent 工程重构作品。关注如何将日志、主机指标、防护状态等领域工具组织为边界明确、状态可管理的调查过程。
 
-The goal is to build an enterprise-grade security agent system with open-source-grade architectural discipline.
+本版本以解释已有设计为目标。fake 数据只用于离线工具测试与有限流程演示，不继续扩建本地企业环境，不以生产部署、更多工具或更大模拟数据集作为完结条件。
 
-## Position Summary
+![系统架构](../architecture.svg)
 
-`sec-investigator` is not a generic multi-agent system. It is a unified, state-driven investigation runtime built on LangGraph.
+## 三层职责
 
-LangGraph is used as the execution substrate, not as the business brain.
+| 层 | 当前职责 | 边界 |
+|---|---|---|
+| `runtime` | LangGraph、状态/reducer、节点、模型 profile、checkpoint、事件 | 不导入 `surfaces`；节点会导入 `security`，不是完全领域无关的内核 |
+| `security` | 资产能力、工具/适配器、证据抽取、风险策略、playbook、schema、RAG | 集中领域规则与上游语义 |
+| `surfaces` + `web` | FastAPI、SSE、Webhook、飞书、React 展示 | 承接输入和交付，不承担图内模型推理 |
 
-The old KKS problem was not weak tools, but fragmented runtime philosophy: `Guard`, `Plan`, and `ReAct` were parallel islands, routing was LLM-driven, and coordination leaked into the handler layer.
+配置和模型构造位于 `runtime`，安全工具和策略会反向读取这些设施。三层体现职责划分，不应宣传为严格单向、无依赖环的整洁架构。
 
-The rewrite corrects this by making the graph a state machine, keeping routing and policy in code, keeping tools in the security layer, and keeping surfaces thin.
+## 实际工作流
 
-Existing KKS tools and collectors are still valuable and production-proven; they do not need to be rediscovered, but they must be re-integrated under stricter state, layering, and runtime contracts.
+```mermaid
+flowchart TD
+    A([START]) --> B[asset_resolution]
+    B --> S[supervisor：代码路由 + LLM 任务描述]
+    S -->|logs 缺失| L[log_detective]
+    L --> S
+    S -->|machine 缺失且具备能力| MD[dispatch_machine_checks]
+    MD --> M[Send machine_check × asset]
+    M --> MR[machine_rollup]
+    MR --> S
+    S -->|security 缺失且具备能力| CD[dispatch_security_checks]
+    CD --> C[Send security_guard × asset]
+    C --> CR[security_rollup]
+    CR --> S
+    S -->|齐备 + critical| H[approval_gate：checkpoint / interrupt]
+    S -->|齐备 + 无需审核| R[reporter]
+    H -->|Command resume：同意| R
+    H -->|拒绝| F([END：failed])
+    R --> E([END：completed])
+```
 
-The system should be understood as one runtime with many bounded specialists. The primary question is no longer "single-agent or multi-agent," but whether execution is unified, governed, observable, and constrained by explicit business boundaries.
+1. **资产解析**：域名/IP 解析为 `NodeMachine`，形成 `inspection_scope` 和 `capability_scope`；能力决定可执行的检查。
+2. **确定性调度**：依次寻找缺少的 logs、machine、security findings；不具备能力的阶段跳过。LLM 写 `agent_task`，不决定 `next_node`。
+3. **有界调查**：worker 使用绑定工具、playbook 和模型 profile；日志阶段包含可选知识检索。
+4. **按资产分片**：主机/防护通过 `Send()` 分发，先写 `asset_findings[asset_id]`，rollup 汇总会话级 findings。
+5. **审核与报告**：应执行阶段完成后，若分项含 critical 则中断；同意后生成报告，拒绝以 failed 结束。
 
-Freedom is only valid inside a bounded graph.
+同类检查内的资产可以并行；三个专家阶段由 supervisor 按序推进。`Send()` 不能证明多租户或分布式水平扩容已验证。
 
-## Core Position
+## 模型具体承担什么
 
-`sec-investigator` should not be understood as a generic "AI agent application."
+| 位置 | 模型输入/输出 | 软件控制的边界 |
+|---|---|---|
+| supervisor | 资产上下文、已有维度、已确定阶段 → 一句任务指令 | `_next_worker` / `_eligible_workers` 决定路由；此处仍有模型调用依赖 |
+| worker | 任务与工具返回 → 查询选择、观测文本 | 绑定工具集、参数 schema、playbook、图递归上限 |
+| structured extractor | 分析文本 → Pydantic findings | 确定性关键数值覆盖、分项风险重算 |
+| reporter | 会话与资产发现 → 根因假设、摘要、建议、结构化报告 | 提取阶梯、空壳检查、确定性兜底 |
 
-It should be understood as a bounded investigation runtime for security and operations scenarios, where:
+LLM 组织与解释领域信息，不拥有路由权、审核决定权或自动处置权。工具返回是观测材料；模型生成的根因与建议应按解释性输出理解。
 
-- business boundaries define system boundaries
-- system boundaries constrain agent behavior
-- tools are domain assets, not prompt accessories
-- state is the primary truth source
-- routing is a software concern, not a free-form LLM concern
+## 约束与实际保证范围
 
-The system is not trying to maximize open-ended autonomy. It is trying to maximize reliable, auditable, domain-constrained execution.
+### 证据与风险
 
-## Why LangGraph Is the Right Substrate
+`EvidenceCollector` 接收已执行工具返回，支持日志错误率/请求数、主机指标和 CC/DDoS 标记等字段。定级用的关键数值来自工具；未采集到的字段不会用模型回忆值填充。没有调用相关工具、无法解析或尚未支持的字段，不会自动成为完整证据。fake 模式下连通性检查返回未检测，不发起 ICMP 探测。
 
-LangGraph is the correct architectural substrate for this class of system because it is strongest where industrial agent systems actually need discipline:
+`EvidencePolicy` 计算分项风险，reporter 按分项最高风险确定总风险和告警状态。`evidence_status` 区分 available / partial / insufficient；有覆盖不足且其他分项均为 low 时，总风险至少为 medium。报告正文没有完整数值一致性校验，模型生成的解释与根因仍需复核。
 
-- stateful execution
-- checkpointing and recovery
-- streaming
-- routing
-- human-in-the-loop interruption points
-- orchestrator-worker execution patterns
+### 工具预算
 
-That makes it fundamentally different from frameworks primarily optimized to strengthen general AI behavior in broad, everyday, unconstrained use cases.
+worker 用 `max_tool_calls * 2 + 1` 设置 ReAct 图递归上限；触及上限可返回部分 findings。重复工具或连续空结果达到阈值后返回停止提示，并非严格取消后续全部调用。
 
-In this context:
+这限制迭代规模，不是精确的工具次数、token 或费用配额。同步 RAG 工具经线程执行并经过同一事件包装器。
 
-- LangGraph is a runtime substrate
-- not the business brain
-- not the policy system by itself
-- not the domain model by itself
+### 人工审核
 
-It is the execution scaffold that allows the domain system to be implemented without rebuilding foundational orchestration machinery from scratch.
+分项风险触发 `interrupt()`，checkpoint 保存中断，`Command(resume=...)` 继续或拒绝。存储由工厂选择 SQLite / PostgreSQL。
 
-## What Was Learned from Other Systems
+审核控制的是**是否继续生成报告**，位于取证之后；不是查询前置授权，也没有审核后封禁/重启链。Webhook 保留后台调查/飞书投递代码，但未形成经验证的企业审核运营闭环。
 
-Different systems were useful for different reasons.
+### 报告降级
 
-From `cc-cli`, the key learning was engineering discipline around queries, tools, and practical model usage. The important lesson there is how to think from the source-code level about model invocation as part of a software system, not as an isolated prompt exercise.
+`function_calling` → `json_mode` → 原始文本 JSON 解析 → 确定性汇总。前三步尝试模型结果结构化，最后一步基于已有 findings 兜底。这提高输出路径的可用性，不保证诊断准确率。
 
-From `Hermes`, the key learning was hierarchical governance, skill systems, and clear system-boundary definition. The value is not only capability composition, but understanding how capabilities are structured and constrained.
+### 可观察性
 
-From LangGraph, the key value is different again: it provides a strong runtime scaffold, established patterns, and reusable packages that remove a large amount of low-value foundational engineering effort. That allows more focus on the actual architectural problem: how to map domain business boundaries into explicit system boundaries.
+RuntimeEvent 经 SSE 和 `subgraphs=True` 转发。前端 `agui.ts` 是项目内部语义映射，没有完整实现 AG-UI wire protocol，也未验证 CopilotKit 互通。
 
-## What `sec-investigator` Is Actually Building
+工具调用和结果通过 `call_id` 配对，详情保留完整输出；部分组件仍识别节点名。当前是执行时间线与证据展示，不是完整审计平台或完全解耦的标准协议客户端。
 
-The rewrite should be understood through this formula:
+### 资源与模型抽象
 
-**Autonomous security agent = LangGraph runtime substrate + KKS domain tools and business logic + strict state contracts + strict layered governance**
+工具工厂每次返回独立 `ToolBundle`：默认连接首次使用时创建并在 worker 退出时关闭，注入连接由调用方持有。ES、Prometheus 和 RAG 均支持 `aclose()`；RAG 使用独立连接别名。fake 模式和真实适配器关闭合同已有离线回归，企业 real 模式没有端到端验证。
 
-This formula needs careful interpretation.
+`build_model(profile)` 隔离聊天模型构造；DeepSeek 官方 OpenAI 兼容端点使用非思考模式以支持结构化输出。RAG embedding 仍直接用 OpenAI SDK，所以模型无关性主要覆盖聊天推理层。
 
-The important word is not "autonomous." The important phrase is "bounded autonomy."
+## 验证边界
 
-In a security system, freedom is only valid when it exists inside a bounded graph, where:
+2026-10-29：现有环境通过离线测试和前端构建；真实模型的 fake 数据演示已执行。没有调用企业业务系统，没有验证 real 模式效果、生产承载能力或诊断准确率。
 
-- node eligibility is controlled
-- transitions are explicit
-- state mutation is governed
-- routing is policy-constrained
-- execution is observable
+测试包括策略、工具合同、资产汇总、路由、子图事件和人工中断。事故 replay 的部分测试预注入 findings 并 Mock 报告；审核集成测试经过真实 worker/工具与 fake 数据，但仍替换模型和 ReAct 决策。
 
-The system should not be free in an unbounded space. It should only be free to choose among permitted actions inside a rigorously defined runtime.
+## 主要设计取舍
 
-## Old KKS: The Real Architectural Problem
+- **固定阶段优先级**：获得可解释、可测试流程，牺牲自由规划和跨阶段任意跳转。
+- **确定性数值覆盖**：减少模型记忆数字的漂移，增加工具返回解析与字段维护成本。
+- **资产隔离后汇总**：避免并发争用顶层 findings，增加 scope/rollup 的显式设计。
+- **LangGraph 作为依赖**：复用状态、checkpoint、interrupt、`Send()`，接受框架约束与升级成本。
+- **有限 fake 样例**：提供独立于企业内网的验证入口，不模拟完整企业能力，不代表泛化效果。
 
-The main problem in the original KKS was not that the tools were weak.
-
-In fact, the tool and domain base was strong:
-
-- the `agents/tools/` layer contained production-proven integrations
-- ES DSL construction had real operational value
-- Prometheus queries were grounded in actual usage
-- CC and DDoS adapters had been validated in production
-- domain resolution logic in `GFCollector` and `WAFCollector` came from real operational friction
-- deduplication and alert-state handling were shaped by months of business use
-
-That part of the system was not theoretical. It was real.
-
-The real architectural problem was the runtime philosophy around those assets.
-
-### 1. Three Parallel Runtime Islands
-
-The old system had `Guard`, `Plan`, and `ReAct` as separate runtime islands.
-
-These were not three strategies inside one runtime. They were three independent graphs with:
-
-- separate state models
-- separate node sets
-- separate routing logic
-- coordination pushed outside the graph
-
-What coordinated them was not a unified runtime state machine, but external Redis-based bookkeeping in the handler layer.
-
-That is a direct sign of graph-philosophy failure:
-
-- the graph should have been the runtime center
-- instead, the graph became only one local workflow tool among several systems
-
-### 2. LLM-Driven Routing
-
-In the old ReAct path, the supervisor used the LLM to decide the next node.
-
-That made routing:
-
-- less predictable
-- less testable
-- more expensive
-- more sensitive to prompt drift
-
-This is one of the most important architectural corrections in `sec-investigator`:
-
-- the LLM should generate or refine `agent_task`
-- routing itself should be code-driven and policy-driven
-
-That is the difference between prompt orchestration and software orchestration.
-
-### 3. The God Function Problem
-
-`alert_handler.py` in the old system became a God function.
-
-It simultaneously owned:
-
-- entity extraction
-- deduplication
-- chart rendering
-- multi-mode dispatch
-- Feishu card construction
-- table storage
-- comparison report triggering
-
-That file did not belong cleanly to graph, runtime, or surface. It existed because the architecture had no stable place for cross-cutting execution logic.
-
-This is a classic sign of structural decay:
-
-- if every layer can justify owning a piece of logic
-- then no layer actually governs it
-
-### 4. Inconsistent State Philosophy
-
-The old system did not have one coherent state contract.
-
-Examples included:
-
-- reducer behavior that appended some fields and replaced others without one unified contract model
-- flow-control semantics hidden in state fields such as `output_mode`
-- mixed business and control fields such as `structured_response` and `supervisor_thought`
-- different nodes implicitly assuming different meanings for the same shared state
-
-This meant the graph was no longer a clean state machine. It was a shared mutable container.
-
-### 5. Flow Hard-Coded into the Graph
-
-The old `knowledge_expert` path being effectively mandatory at the start of a new session is a good example of the wrong design instinct.
-
-That was not policy-driven routing. It was process hard-coded into the graph.
-
-The correct architecture is:
-
-- policies decide when knowledge augmentation is needed
-- the graph executes state transitions
-- the graph should not hard-code one inflexible procedural worldview
-
-## What Changed in the New Understanding
-
-The most important shift is this:
-
-The old understanding of LangGraph was:
-
-- the graph is a flowchart
-
-The current understanding is:
-
-- the graph is a state machine
-- strategy belongs in code
-- tools belong in the domain layer
-- surfaces stay thin
-
-Both approaches can produce software that "runs."
-
-But they are radically different in:
-
-- maintainability
-- testability
-- observability
-- extension cost
-- long-term evolution risk
-
-This is why the rewrite is not just a refactor. It is a correction in runtime philosophy.
-
-## Is `sec-investigator` Single-Agent or Multi-Agent?
-
-Strictly speaking, the current system is best described as:
-
-**one runtime with multiple bounded specialists**
-
-It is not a classic "single agent" in the naive sense, because it clearly has specialist roles.
-
-But it is also not a loosely coupled multi-agent society in which multiple semi-autonomous planners negotiate control of the system.
-
-The more accurate description is:
-
-**single-runtime, multi-specialist investigation system**
-
-This distinction matters because, in enterprise security systems, the important question is no longer:
-
-- is this single-agent or multi-agent?
-
-The more important questions are:
-
-- who owns routing authority?
-- who owns state mutation authority?
-- are specialists bounded workers or hidden planners?
-- is execution policy unified?
-- is the runtime observable and auditable?
-
-If those questions are answered well, then the label "single-agent" versus "multi-agent" becomes secondary.
-
-## Is That Question Still Important?
-
-Yes, but it is no longer the first-order question.
-
-For this system, the first-order question is:
-
-**Is this a unified, governed, state-driven execution system?**
-
-That is more important than whether the marketing label says single-agent or multi-agent.
-
-For a security and operations system, the preferred architectural answer is:
-
-- one runtime
-- one truth-bearing state model
-- one policy system
-- many bounded specialists
-
-That is healthier than pursuing a multi-agent identity for its own sake.
-
-## Current LangGraph Usage: Correct but Still Basic
-
-It is important to be precise about the current maturity level.
-
-`sec-investigator` is using LangGraph correctly at the foundational level, but not yet deeply at the advanced orchestration level.
-
-Today it is already aligned with:
-
-- durable execution
-- streaming
-- HITL extension points
-- routing
-- basic orchestrator-worker execution
-
-But it has not yet fully adopted more advanced production patterns such as:
-
-- parallel fan-out and fan-in
-- `Send`-driven dynamic worker dispatch
-- subgraph-based responsibility packaging
-- richer concurrent aggregation and divide-and-conquer orchestration
-
-So the correct judgment is:
-
-**the project uses LangGraph in a structurally correct foundational way, but it has not yet exhausted LangGraph's more advanced horizontal orchestration capabilities**
-
-That is not a flaw by itself. It simply defines the current phase of maturity.
-
-## Is Horizontal Scalability Healthy?
-
-This depends on what kind of scaling is being discussed.
-
-### 1. Business-Capability Scalability
-
-At the architectural level, this is healthy.
-
-The new structure makes it natural to add:
-
-- a new adapter
-- a new collector
-- a new playbook
-- a new specialist worker
-- a new surface adapter
-- a new schema or finding type
-
-This is healthy horizontal growth because capabilities are added as bounded modules, not by cloning runtime patterns.
-
-### 2. Runtime-Scale Scalability
-
-This is only partially mature.
-
-The architecture allows it, but the implementation has not yet fully proven it.
-
-Reasons include:
-
-- the graph is still mostly a serial supervisor-worker loop
-- advanced parallel orchestration patterns are not yet in use
-- some adapter and client lifecycle management remains incomplete
-- surface-level hardening and tenancy concerns are still immature
-- replay, integration, and benchmark coverage are still incomplete
-
-So the correct conclusion is:
-
-**the architecture is horizontally extensible in structure, but not yet fully demonstrated as horizontally scalable in runtime behavior**
-
-## The Right Position on the Legacy Tooling Layer
-
-It is correct to say that the existing tool and business base does not need to be rediscovered from zero.
-
-However, that statement needs precision.
-
-What can be reused with high confidence:
-
-- business semantics
-- operational query knowledge
-- API integration experience
-- field-level domain understanding
-- production-shaped heuristics and workflow knowledge
-
-What still must be revalidated in the new architecture:
-
-- input and output contracts under the new runtime
-- adapter lifecycle ownership
-- event emission and observability behavior
-- timeout and concurrency behavior
-- consistency with the new state contract
-- compliance with the new layering and policy model
-
-So the correct statement is not:
-
-- "the tool layer needs no more validation"
-
-The correct statement is:
-
-- "the business validity of the tool layer is already proven, but its runtime integration correctness must still be validated under the new architecture"
-
-## Final Architectural Summary
-
-The current rewrite should not be described as "moving KKS onto LangGraph."
-
-That is too shallow.
-
-The real change is this:
-
-**the system is being transformed from a collection of parallel workflows into a unified, state-machine-driven, domain-bounded investigation runtime**
-
-This is the real architectural value of `sec-investigator`.
-
-And the right final principle is:
-
-**freedom is only correct when it exists inside a bounded graph, where node choice is controlled, state is explicit, and policy governs execution**
-
-That is the direction an enterprise-grade security agent system should follow.
+作品以这些取舍的实现与说明为中心。生产扩展退出当前完结条件，见 [收尾清单](../../todo.md)。

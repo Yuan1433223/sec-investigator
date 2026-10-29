@@ -1,21 +1,42 @@
-# Active backlog
+# 作品集版本收尾
 
-## High priority
+2026-10-28 范围决定：本项目收敛为企业安全调查 Agent 的脱敏重构作品，进入展示与交付收尾。保留现有实现，不继续扩建业务能力或模拟企业基础设施。
 
-- [ ] Replay/eval test suite for real incidents (beyond the 3 golden fixtures)
-- [ ] OTel trace instrumentation across graph nodes
-- [ ] MCP server wrapper for sec-investigator
-- [ ] `DATA_SOURCE=real` end-to-end integration test
+## 已完成的文档收敛
 
-## Medium priority
+- [x] 统一 README 定位，补充现有代码的模型边界和验证边界。
+- [x] 更新架构图、工作流与设计说明。
+- [x] 校正接口路径、配置说明与“完全离线”“三个专家并行”等不准确表述。
+- [x] 将前端方案、展示素材和结束条件写入 `docs/portfolio.md`。
+- [x] 标记旧评审和接口资料为历史参考，保留原始记录。
 
-- [ ] Mobile-responsive layout polish
-- [ ] In-session tool-call cache (ES factory)
-- [ ] Alert time-window alignment configuration
-- [ ] Error normalization: universal ErrorEvent contract
+## 可运行演示涉及的既有缺陷
 
-## Low priority
+这些是现有路径的修复，不是新产品路线。
 
-- [ ] Feishu rich-card template
-- [ ] Grafana chart rendering in report
-- [ ] Auth / rate-limit / tenant-isolation extension points
+- [x] 统一适配器关闭接口与资源所有权，修复 SSE 收尾异常和全局缓存跨会话复用问题。
+- [x] 统一分项风险与最终报告风险口径，标明数据不足状态。
+- [x] 为并发工具调用补充唯一关联，处理审批拒绝后的前端结束状态。
+- [x] 修复 DeepSeek 结构化输出兼容，并对现有源站样例的时间和日志统计做一致性修复。
+- [x] fake 模式下禁止真实连通性探测，保留“未检测”状态。
+- [x] 使用现有模型和 fake 数据进行真实调查、批准及拒绝路径的浏览器冒烟。
+
+## 展示交付
+
+- [ ] 如选择美化前端，完成一次限定范围的布局/排版收尾；不更换运行框架和后端协议。
+- [ ] 更新当前版本截图，录制调查 → 证据 → 审核 → 报告的短演示。
+- [ ] 作者确认实习阶段工作、继承经验和个人重构贡献，核对可公开素材与授权方式。
+- [ ] 如需声明全新机器可复现，再单独验证干净环境安装；当前已核验现有机器的标准启动与实跑。
+
+## 结束条件
+
+README、架构图与代码一致；推理边界与限制可解释；现有测试和构建通过；展示素材准确且匹配实际版本。若提供可运行演示，上述影响该路径的缺陷应修复并完成冒烟验证。达到这些条件后冻结作品集版本，不以新增功能数量决定完结。
+
+## 已退出当前范围的历史设想
+
+仅保留为历史方向，不再作为未完成任务：
+
+- 扩充真实事故评估集、本地模拟企业业务/数据源、real 模式企业联调。
+- OTel 平台化、MCP server、会话缓存优化。
+- RBAC、多租户、配额等企业产品化能力。
+- 更多飞书卡片、Grafana 图表和移动端专项适配。

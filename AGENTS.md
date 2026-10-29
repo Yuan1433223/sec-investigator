@@ -6,11 +6,20 @@
 
 Three layers: `runtime` / `security` / `surfaces`. `runtime` never imports `surfaces`.
 
+## Portfolio scope (2026-10-28)
+
+The project is converging as a portfolio reconstruction of an enterprise agent.
+Prioritize accurate architecture/workflow/model-boundary documentation, existing-path
+fixes, and a bounded presentation polish. Do not expand fake enterprise infrastructure,
+incident datasets, MCP/OTel platforms, or product features unless explicitly requested.
+The rules below are design constraints; known implementation gaps are documented in
+`docs/architecture/agent_runtime_position.md` and must not be advertised as solved.
+
 ## Build & test
 
 ```bash
 uv sync
-uv run pytest -q          # 551 tests, fully offline
+uv run pytest -q          # fully offline
 cd web && npm run build    # frontend (tsc strict + vite)
 uv run sec-investigator    # dev server on :18230
 ```
@@ -51,7 +60,7 @@ START → asset_resolution → supervisor
 4. **LangGraph as dependency** — never copy framework code. If a bug hits, work around at app layer.
 5. **Model-agnostic** — `build_model(profile)` abstraction, no vendor SDK imports in business code.
 6. **Thin surfaces** — no business logic in HTTP/webhook/Feishu handlers.
-7. **No UI coupling to node names** — frontend maps SSE events via AG-UI adapter (`web/src/lib/agui.ts`).
+7. **Avoid UI coupling to node names** — centralize semantic mapping in `web/src/lib/agui.ts`. This is an internal adapter, not a complete AG-UI wire-protocol implementation; some existing components still inspect node names.
 
 ## Adapter lifecycle
 
@@ -68,8 +77,9 @@ All adapters holding external connections must:
 
 - `docs/REFERENCE.md` — full package/config/state/event/tool inventory
 - `docs/changelog.md` — historical M1–M6 progress
-- `todo.md` — active backlog
+- `docs/portfolio.md` — portfolio scope, presentation and frontend options
+- `todo.md` — bounded closing checklist; former platform extensions are out of scope
 
 ## Short directive
 
-Build a constrained-autonomy security investigation runtime. Use LangGraph as a dependency, keep architecture clean enough that the next rewrite is unnecessary.
+Maintain and present a constrained-autonomy security investigation runtime as a bounded portfolio artifact. Use LangGraph as a dependency and keep capability claims consistent with current code and verification.

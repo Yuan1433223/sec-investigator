@@ -1,5 +1,7 @@
 # Recorded Incidents
 
+> Portfolio scope, 2026-10-28: these are historical scenario notes, not an independent evaluation of this reconstruction. Fake fixtures preserve selected causal signals and may use different aggregate ratios/windows. Replay tests partly inject findings and mock models. Business identifiers remain in these notes; synthetic tool data does not itself anonymize identifiers. Current implementation boundaries are described in [README](../README.md).
+
 Three real production incidents recorded during the original system's operation.
 They are used as the replay fixtures and the gold-standard answers for the demo
 path. The synthetic data source (`DATA_SOURCE=fake`, see AGENTS.md) is derived

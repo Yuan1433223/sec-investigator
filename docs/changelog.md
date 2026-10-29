@@ -1,5 +1,24 @@
 # Changelog
 
+## Demo path repair and smoke test (2026-10-29)
+
+- Replaced process-wide tool/client caches with lazy worker-owned bundles and deterministic async cleanup.
+- Aggregate report severity now follows code-classified findings; evidence coverage and unobserved numbers are handled explicitly.
+- Added tool-call correlation, full tool-output display, approval rejection state, and approval delivery after the checkpoint is saved.
+- Aligned the existing fake incident window and raw/status sample responses; fake connectivity checks no longer send real ICMP.
+- Added DeepSeek official endpoint compatibility for structured-output tool choice and verified real-model demo paths with fake business data.
+- Added offline regression checks for these behaviors. The model remains probabilistic, and narrative consistency and enterprise real-mode integration are not guaranteed.
+
+## Portfolio scope and documentation closeout (2026-10-28)
+
+- Converged the scope on an enterprise-agent reconstruction for a portfolio; expanded incident simulation, real integration, MCP/OTel and multi-tenant product work are no longer completion requirements.
+- Rewrote README, implementation reference, architecture/model-boundary explanation and presentation guide against current code.
+- Updated the architecture illustration and added a PNG export; recorded frontend options without migrating the application.
+- Documented existing lifecycle, report-consistency and event-correlation gaps rather than marking them fixed.
+- Prior local verification: 551 offline backend tests and frontend build passed. No new enterprise/model evaluation or frontend runtime migration was performed for this documentation update.
+
+The entries below are historical development records. Their dates and original claims are preserved; current capability boundaries are described in README and the architecture document.
+
 ## M6 — Web frontend (2026-04-30)
 - React 19 + Vite + TS SPA: pipeline rail, SSE event timeline, findings panel, report card, approval dialog
 - FastAPI static hosting of `web/dist`; Vite proxy for dev

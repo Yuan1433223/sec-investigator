@@ -9,6 +9,8 @@ dist/
 build/
 .env
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.db
 .mypy_cache/
 .ruff_cache/

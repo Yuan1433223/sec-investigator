@@ -1,140 +1,122 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 900" width="1040" height="900" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
-      <path d="M0,0 L7,3.5 L0,7 Z" fill="#7a8aa8"/>
-    </marker>
-    <linearGradient id="gSurf" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#eef2fb"/><stop offset="1" stop-color="#e3e9f7"/>
-    </linearGradient>
-    <linearGradient id="gRun" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#eafaf1"/><stop offset="1" stop-color="#ddf4e7"/>
-    </linearGradient>
-    <linearGradient id="gSec" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fdf3e7"/><stop offset="1" stop-color="#f9ead6"/>
-    </linearGradient>
-  </defs>
-
-  <!-- title -->
-  <text x="520" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#1b2a4a">sec-investigator — 系统架构</text>
-  <text x="520" y="56" text-anchor="middle" font-size="13" fill="#5a6a88">受限自治安全调查 agent · LangGraph 状态机运行时 · runtime / security / surfaces 三层</text>
-
-  <!-- ============ SURFACES ============ -->
-  <g>
-    <rect x="20" y="78" width="1000" height="118" rx="12" fill="url(#gSurf)" stroke="#9fb0d0"/>
-    <text x="40" y="100" font-size="14" font-weight="700" fill="#24365c">surfaces · 入口与交付层（保持薄）</text>
-    <rect x="40" y="112" width="200" height="70" rx="8" fill="#ffffff" stroke="#b7c3e0"/>
-    <text x="140" y="140" text-anchor="middle" font-size="13" font-weight="600" fill="#1b2a4a">REST API</text>
-    <text x="140" y="160" text-anchor="middle" font-size="11" fill="#66758f">POST /investigate</text>
-    <rect x="260" y="112" width="200" height="70" rx="8" fill="#ffffff" stroke="#b7c3e0"/>
-    <text x="360" y="140" text-anchor="middle" font-size="13" font-weight="600" fill="#1b2a4a">Webhook (Grafana)</text>
-    <text x="360" y="160" text-anchor="middle" font-size="11" fill="#66758f">告警触发 · 去重</text>
-    <rect x="480" y="112" width="200" height="70" rx="8" fill="#ffffff" stroke="#b7c3e0"/>
-    <text x="580" y="140" text-anchor="middle" font-size="13" font-weight="600" fill="#1b2a4a">SSE</text>
-    <text x="580" y="160" text-anchor="middle" font-size="11" fill="#66758f">事件流 / 进度订阅</text>
-    <rect x="700" y="112" width="200" height="70" rx="8" fill="#ffffff" stroke="#b7c3e0"/>
-    <text x="800" y="140" text-anchor="middle" font-size="13" font-weight="600" fill="#1b2a4a">Feishu 投递</text>
-    <text x="800" y="160" text-anchor="middle" font-size="11" fill="#66758f">订阅 FinalEvent</text>
-  </g>
-
-  <!-- arrow surfaces -> runtime -->
-  <line x1="520" y1="196" x2="520" y2="220" stroke="#7a8aa8" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="532" y="213" font-size="10" fill="#7a8aa8">invoke</text>
-
-  <!-- ============ RUNTIME ============ -->
-  <g>
-    <rect x="20" y="222" width="1000" height="330" rx="12" fill="url(#gRun)" stroke="#8fc7a5"/>
-    <text x="40" y="244" font-size="14" font-weight="700" fill="#1f5a3a">runtime · LangGraph 调查图（状态机）</text>
-
-    <!-- asset_resolution -->
-    <rect x="40" y="258" width="180" height="74" rx="8" fill="#ffffff" stroke="#7bb493"/>
-    <text x="130" y="282" text-anchor="middle" font-size="13" font-weight="600" fill="#1f5a3a">asset_resolution</text>
-    <text x="130" y="302" text-anchor="middle" font-size="10" fill="#5a7a6a">目标 → NodeMachine[]</text>
-    <text x="130" y="318" text-anchor="middle" font-size="10" fill="#5a7a6a">inspection/capability scope</text>
-
-    <!-- supervisor -->
-    <rect x="270" y="258" width="180" height="74" rx="8" fill="#ffffff" stroke="#7bb493"/>
-    <text x="360" y="282" text-anchor="middle" font-size="13" font-weight="600" fill="#1f5a3a">supervisor</text>
-    <text x="360" y="302" text-anchor="middle" font-size="10" fill="#5a7a6a">确定性能力路由</text>
-    <text x="360" y="318" text-anchor="middle" font-size="10" fill="#5a7a6a">LLM 只写任务说明</text>
-
-    <!-- workers -->
-    <rect x="500" y="258" width="500" height="150" rx="8" fill="#ffffff" stroke="#9cc8b2"/>
-    <text x="750" y="276" text-anchor="middle" font-size="12" font-weight="600" fill="#1f5a3a">bounded specialists（worker）</text>
-    <rect x="520" y="286" width="140" height="52" rx="6" fill="#f2fbf5" stroke="#a9d2bc"/>
-    <text x="590" y="308" text-anchor="middle" font-size="11" font-weight="600" fill="#2a6b47">log_detective</text>
-    <text x="590" y="325" text-anchor="middle" font-size="9" fill="#5a7a6a">ES / RAG 日志</text>
-    <rect x="680" y="286" width="140" height="52" rx="6" fill="#f2fbf5" stroke="#a9d2bc"/>
-    <text x="750" y="308" text-anchor="middle" font-size="11" font-weight="600" fill="#2a6b47">machine_check</text>
-    <text x="750" y="325" text-anchor="middle" font-size="9" fill="#5a7a6a">Prom 节点·按资产 Send</text>
-    <rect x="840" y="286" width="140" height="52" rx="6" fill="#f2fbf5" stroke="#a9d2bc"/>
-    <text x="910" y="308" text-anchor="middle" font-size="11" font-weight="600" fill="#2a6b47">security_guard</text>
-    <text x="910" y="325" text-anchor="middle" font-size="9" fill="#5a7a6a">CC/DDoS/WAF/GF</text>
-    <!-- rollups -->
-    <rect x="520" y="360" width="150" height="36" rx="6" fill="#e8f6ee" stroke="#b7d9c4"/>
-    <text x="595" y="383" text-anchor="middle" font-size="10" fill="#2a6b47">machine_rollup</text>
-    <rect x="840" y="360" width="150" height="36" rx="6" fill="#e8f6ee" stroke="#b7d9c4"/>
-    <text x="915" y="383" text-anchor="middle" font-size="10" fill="#2a6b47">security_rollup</text>
-    <text x="750" y="390" text-anchor="middle" font-size="9" fill="#7b9b8a">asset_findings → findings</text>
-
-    <!-- approval + reporter -->
-    <rect x="270" y="392" width="180" height="56" rx="8" fill="#fdf3e7" stroke="#d9a868"/>
-    <text x="360" y="414" text-anchor="middle" font-size="12" font-weight="600" fill="#7a5220">approval_gate (HITL)</text>
-    <text x="360" y="432" text-anchor="middle" font-size="10" fill="#9a7a4a">critical → interrupt</text>
-    <rect x="40" y="392" width="180" height="56" rx="8" fill="#ffffff" stroke="#7bb493"/>
-    <text x="130" y="414" text-anchor="middle" font-size="12" font-weight="600" fill="#1f5a3a">reporter</text>
-    <text x="130" y="432" text-anchor="middle" font-size="10" fill="#5a7a6a">结构化报告 artifact</text>
-
-    <!-- flow arrows -->
-    <line x1="220" y1="295" x2="270" y2="295" stroke="#4a7a5e" stroke-width="2" marker-end="url(#arrow)"/>
-    <line x1="450" y1="295" x2="500" y2="295" stroke="#4a7a5e" stroke-width="2" marker-end="url(#arrow)"/>
-    <path d="M750 408 L360 420" stroke="#c99a5a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-    <path d="M360 448 L230 430" stroke="#4a7a5e" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-    <text x="330" y="478" font-size="10" fill="#5a7a6a">approve → reporter · reject → END</text>
-
-    <!-- cross-cutting runtime capabilities -->
-    <rect x="40" y="470" width="960" height="66" rx="8" fill="#eef7f2" stroke="#a9d2bc"/>
-    <text x="60" y="492" font-size="12" font-weight="600" fill="#2a6b47">cross-cutting runtime capabilities</text>
-    <text x="60" y="516" font-size="11" fill="#4a6a5a">TypedState · Events 流 · Checkpoint (SQLite/Postgres) · 模型 profile 抽象 · Retry/Timeout · 工具预算 · tracing · replay</text>
-  </g>
-
-  <!-- arrow runtime -> security -->
-  <line x1="520" y1="552" x2="520" y2="576" stroke="#7a8aa8" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="532" y="569" font-size="10" fill="#7a8aa8">call tools / policies</text>
-
-  <!-- ============ SECURITY ============ -->
-  <g>
-    <rect x="20" y="578" width="1000" height="150" rx="12" fill="url(#gSec)" stroke="#d9b27a"/>
-    <text x="40" y="600" font-size="14" font-weight="700" fill="#7a5220">security · 安全业务域</text>
-
-    <rect x="40" y="612" width="210" height="100" rx="8" fill="#ffffff" stroke="#d9b27a"/>
-    <text x="145" y="636" text-anchor="middle" font-size="12" font-weight="600" fill="#7a5220">Adapters</text>
-    <text x="145" y="656" text-anchor="middle" font-size="10" fill="#9a7a4a">ES · Prometheus</text>
-    <text x="145" y="672" text-anchor="middle" font-size="10" fill="#9a7a4a">CC · DDoS · WAF · GF</text>
-    <text x="145" y="688" text-anchor="middle" font-size="10" fill="#9a7a4a">RAG(Milvus+Mongo)</text>
-
-    <rect x="270" y="612" width="210" height="100" rx="8" fill="#ffffff" stroke="#d9b27a"/>
-    <text x="375" y="636" text-anchor="middle" font-size="12" font-weight="600" fill="#7a5220">Collectors / Assets</text>
-    <text x="375" y="656" text-anchor="middle" font-size="10" fill="#9a7a4a">NodeResolver · WAF/GF</text>
-    <text x="375" y="672" text-anchor="middle" font-size="10" fill="#9a7a4a">NodeMachine / capabilities</text>
-
-    <rect x="500" y="612" width="210" height="100" rx="8" fill="#ffffff" stroke="#d9b27a"/>
-    <text x="605" y="636" text-anchor="middle" font-size="12" font-weight="600" fill="#7a5220">Policies / Playbooks</text>
-    <text x="605" y="656" text-anchor="middle" font-size="10" fill="#9a7a4a">EvidencePolicy(代码阈值)</text>
-    <text x="605" y="672" text-anchor="middle" font-size="10" fill="#9a7a4a">playbook catalog</text>
-    <text x="605" y="688" text-anchor="middle" font-size="10" fill="#9a7a4a">HITL 判定</text>
-
-    <rect x="730" y="612" width="270" height="100" rx="8" fill="#ffffff" stroke="#d9b27a"/>
-    <text x="865" y="636" text-anchor="middle" font-size="12" font-weight="600" fill="#7a5220">Schemas / Tools / Report</text>
-    <text x="865" y="656" text-anchor="middle" font-size="10" fill="#9a7a4a">findings · report · artifact</text>
-    <text x="865" y="672" text-anchor="middle" font-size="10" fill="#9a7a4a">ES/Prom/Security/RAG tool 工厂</text>
-  </g>
-
-  <!-- ============ DATA SOURCES ============ -->
-  <g>
-    <rect x="20" y="748" width="1000" height="70" rx="12" fill="#f3f5fa" stroke="#c3ccdf"/>
-    <text x="40" y="770" font-size="12" font-weight="600" fill="#44536e">数据源（可替换：DATA_SOURCE=fake 提供离线 fixture）</text>
-    <text x="40" y="798" font-size="11" fill="#5a6a88">Elasticsearch · Prometheus · CC/DDoS · WAF/GF · RAG(Milvus+MongoDB) — 经 adapter seam 接入，测试/演示用 respx + fixture 离线化</text>
-  </g>
-
-  <text x="520" y="876" text-anchor="middle" font-size="11" fill="#7a8aa8">三层分层：runtime 不依赖 surfaces；阈值在代码；路由确定性；资产按能力驱动</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1320" viewBox="0 0 1660 1320" role="img" aria-labelledby="title desc">
+<title id="title">sec-investigator 系统架构与模型边界</title>
+<desc id="desc">三个调查阶段按固定优先级调度，同类检查按资产并行。代码负责路由与分项定级，模型负责工具调查与报告，人工决定是否继续生成报告。底部列出验证状态和实现边界。</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#7189a9"/></marker></defs>
+<rect width="1660" height="1320" fill="#0b1220"/>
+<text x="48" y="39" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" font-weight="700" fill="#6ce0b3">ENGINEERING CASE STUDY  /  PORTFOLIO EDITION</text>
+<text x="48" y="84" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="40" font-weight="700" fill="#edf3fc">sec-investigator</text>
+<text x="440" y="81" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="27" font-weight="400" fill="#a6b7ce">受约束的安全调查 Agent</text>
+<rect x="1185" y="49" width="120" height="30" rx="15" fill="#0b1220" stroke="#2a3c55"/>
+<text x="1197" y="70" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" font-weight="700" fill="#6ce0b3">代码约束</text>
+<rect x="1317" y="49" width="120" height="30" rx="15" fill="#0b1220" stroke="#2a3c55"/>
+<text x="1329" y="70" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" font-weight="700" fill="#91baff">模型推理</text>
+<rect x="1449" y="49" width="160" height="30" rx="15" fill="#0b1220" stroke="#2a3c55"/>
+<text x="1461" y="70" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" font-weight="700" fill="#f4cc79">人工决定</text>
+<rect x="48" y="118" width="1564" height="128" rx="14" fill="#101c2e" stroke="#2a3c55"/>
+<text x="72" y="150" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="700" fill="#a6b7ce">01  SURFACES · 输入与交付</text>
+<rect x="72" y="166" width="360" height="60" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="88" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="700" fill="#edf3fc">React 调查工作台</text>
+<text x="88" y="215" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">目标 · 执行记录 · 审核 · 报告</text>
+<rect x="448" y="166" width="360" height="60" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="464" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="700" fill="#edf3fc">FastAPI + POST SSE</text>
+<text x="464" y="215" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">start / stream / resume</text>
+<rect x="824" y="166" width="360" height="60" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="840" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="700" fill="#edf3fc">Grafana Webhook</text>
+<text x="840" y="215" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">实体提取 · 去重 · 后台调查</text>
+<rect x="1200" y="166" width="388" height="60" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="1216" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="700" fill="#edf3fc">飞书投递（可选）</text>
+<text x="1216" y="215" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">企业接入示例 · 非已验证运营闭环</text>
+<polyline points="280,246 280,326" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="299" y="275" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="15" font-weight="400" fill="#a6b7ce">目标 + 会话</text>
+<rect x="48" y="282" width="1564" height="644" rx="14" fill="#101c2e" stroke="#2a3c55"/>
+<text x="72" y="314" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="700" fill="#a6b7ce">02  RUNTIME · LangGraph 状态工作流</text>
+<rect x="80" y="335" width="270" height="86" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="98" y="367" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="23" font-weight="700" fill="#6ce0b3">资产解析</text>
+<text x="98" y="399" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">inspection / capability scope</text>
+<rect x="400" y="335" width="310" height="86" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="418" y="367" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="23" font-weight="700" fill="#6ce0b3">Supervisor</text>
+<text x="418" y="399" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">代码选路 · LLM 生成任务描述</text>
+<rect x="800" y="335" width="300" height="86" rx="14" fill="#142338" stroke="#816b40"/>
+<text x="818" y="367" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="22" font-weight="700" fill="#f4cc79">人工审核 · interrupt</text>
+<text x="818" y="399" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">同意 → 报告；拒绝 → END</text>
+<rect x="1160" y="335" width="420" height="86" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="1178" y="367" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="23" font-weight="700" fill="#91baff">Reporter → END</text>
+<text x="1178" y="399" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">模型结构化提取 → 确定性兜底</text>
+<polyline points="350,378 400,378" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="710,378 800,378" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="719" y="357" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="400" fill="#a6b7ce">齐备且</text>
+<text x="718" y="405" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="400" fill="#f4cc79">critical</text>
+<polyline points="1100,378 1160,378" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1106" y="359" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="400" fill="#f4cc79">同意</text>
+<polyline points="692,421 692,439 1370,439 1370,421" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="980" y="433" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="400" fill="#a6b7ce">齐备且无需审核</text>
+<polyline points="555,421 555,464" fill="none" stroke="#7189a9" stroke-width="2"/>
+<polyline points="300,464 1360,464" fill="none" stroke="#7189a9" stroke-width="2"/>
+<polyline points="300,464 300,504" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="830,464 830,504" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1360,464 1360,504" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="80" y="492" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">每轮择一：按 1 → 2 → 3 优先级检查缺失维度，可按能力跳过</text>
+<rect x="80" y="512" width="440" height="144" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="98" y="546" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="24" font-weight="700" fill="#91baff">1  日志调查</text>
+<text x="98" y="576" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#a6b7ce">ES 查询 + 可选知识检索</text>
+<text x="98" y="606" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#91baff">LLM：查询选择 / 观测摘要</text>
+<text x="98" y="635" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">目标级取证 → logs findings</text>
+<rect x="610" y="512" width="440" height="144" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="628" y="546" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="24" font-weight="700" fill="#91baff">2  主机检查</text>
+<text x="628" y="576" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#a6b7ce">Prometheus 指标</text>
+<text x="628" y="606" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#91baff">Send(machine_check × asset)</text>
+<text x="628" y="635" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">多资产并行 → 独立发现</text>
+<rect x="1140" y="512" width="440" height="144" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="1158" y="546" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="24" font-weight="700" fill="#91baff">3  防护检查</text>
+<text x="1158" y="576" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#a6b7ce">CC / DDoS / 防护状态</text>
+<text x="1158" y="606" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#91baff">Send(security_guard × asset)</text>
+<text x="1158" y="635" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">多资产并行 → 独立发现</text>
+<polyline points="300,656 300,682" fill="none" stroke="#7189a9" stroke-width="2"/>
+<polyline points="830,656 830,682" fill="none" stroke="#7189a9" stroke-width="2"/>
+<polyline points="1360,656 1360,682" fill="none" stroke="#7189a9" stroke-width="2"/>
+<polyline points="300,682 1360,682" fill="none" stroke="#7189a9" stroke-width="2"/>
+<polyline points="830,682 830,708" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="120" y="708" width="1420" height="82" rx="14" fill="#102b2b" stroke="#2d6256"/>
+<text x="142" y="742" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="23" font-weight="700" fill="#6ce0b3">工具返回 → EvidenceCollector → 支持的关键指标覆盖 → EvidencePolicy 分项定级</text>
+<text x="142" y="772" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="19" font-weight="400" fill="#a6b7ce">主机/防护：asset_findings → rollup → findings；日志直接写会话发现；各阶段返回 supervisor</text>
+<polyline points="120,750 66,750 66,445 415,445 415,421" fill="none" stroke="#7189a9" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="82" y="438" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="400" fill="#6ce0b3">发现返回</text>
+<rect x="80" y="816" width="350" height="64" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="94" y="841" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="19" font-weight="700" fill="#edf3fc">状态 / reducers</text>
+<text x="94" y="867" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">资产结果隔离后汇总</text>
+<rect x="446" y="816" width="350" height="64" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="460" y="841" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="19" font-weight="700" fill="#edf3fc">Checkpoint</text>
+<text x="460" y="867" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">SQLite dev / PostgreSQL</text>
+<rect x="812" y="816" width="350" height="64" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="826" y="841" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="19" font-weight="700" fill="#edf3fc">Model profiles</text>
+<text x="826" y="867" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">build_model(profile)</text>
+<rect x="1178" y="816" width="402" height="64" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="1192" y="841" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="19" font-weight="700" fill="#edf3fc">RuntimeEvent → SSE</text>
+<text x="1192" y="867" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">子图工具事件冒泡</text>
+<text x="80" y="909" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#f4cc79">审核控制报告生成，不是查询前置授权；本系统没有自动封禁、重启或修复动作。</text>
+<rect x="48" y="950" width="1564" height="168" rx="14" fill="#101c2e" stroke="#2a3c55"/>
+<text x="72" y="984" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="700" fill="#a6b7ce">03  SECURITY · 领域能力与业务数据</text>
+<rect x="72" y="1000" width="490" height="96" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="88" y="1028" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="21" font-weight="700" fill="#edf3fc">工具与资产</text>
+<text x="88" y="1057" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">ES / Prometheus / CC / DDoS</text>
+<text x="88" y="1083" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">GF / WAF collectors · 资产能力</text>
+<rect x="578" y="1000" width="490" height="96" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="594" y="1028" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="21" font-weight="700" fill="#edf3fc">策略与知识</text>
+<text x="594" y="1057" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">EvidencePolicy / playbook / schemas</text>
+<text x="594" y="1083" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">RAG：fake 内置 KB / real 向量检索</text>
+<rect x="1084" y="1000" width="504" height="96" rx="14" fill="#142338" stroke="#2a3c55"/>
+<text x="1100" y="1028" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="21" font-weight="700" fill="#edf3fc">数据源接缝</text>
+<text x="1100" y="1057" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">fake：MockTransport 合成业务数据</text>
+<text x="1100" y="1083" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">real：实际业务系统（当前未联调）</text>
+<rect x="48" y="1142" width="760" height="134" rx="14" fill="#101c2e" stroke="#2a3c55"/>
+<text x="70" y="1175" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="700" fill="#6ce0b3">已验证 · 2026-10-28</text>
+<text x="70" y="1207" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="22" font-weight="700" fill="#edf3fc">551 项离线测试通过 · 前端构建通过</text>
+<text x="70" y="1235" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">流程 / 合同测试 ≠ 诊断准确率；fake 不替代聊天模型。</text>
+<text x="70" y="1261" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">未验证企业 real 模式、生产承载或本图之外的产品能力。</text>
+<rect x="832" y="1142" width="780" height="134" rx="14" fill="#101c2e" stroke="#2a3c55"/>
+<text x="854" y="1175" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="700" fill="#f4cc79">推理边界 · 谁拥有决定权</text>
+<text x="854" y="1207" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="400" fill="#edf3fc">代码决定：路由、检查准入、分项定级与资产汇总。</text>
+<text x="854" y="1235" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">模型负责：限定工具内调查、上下文解释与报告撰写。</text>
+<text x="854" y="1261" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="17" font-weight="400" fill="#a6b7ce">人工决定：是否继续生成报告；后续处置建议由人执行。</text>
+<text x="48" y="1304" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="400" fill="#a6b7ce">有限场景 · 显式状态 · 代码约束 · 人工审核     /     企业场景抽离后的工程作品</text>
 </svg>
