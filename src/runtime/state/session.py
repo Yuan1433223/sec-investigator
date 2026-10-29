@@ -49,6 +49,7 @@ class SessionState(TypedDict):
     capability_scope: NotRequired[dict[str, list[str]]]
     inspection_scope: NotRequired[list[dict]]
     active_asset: NotRequired[dict[str, Any]]
+    analysis_window: NotRequired[dict[str, str] | None]
 
 
 class InvestigationInput(TypedDict):

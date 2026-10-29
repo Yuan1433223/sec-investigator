@@ -71,8 +71,13 @@ async def reporter_node(state: SessionState) -> dict:
         write(StatusEvent(node="reporter", message="Model structured output unavailable; emitting deterministic report"))
         report = _deterministic_report(target, findings)
 
-    # Map structured report → InvestigationArtifact (runtime-layer type)
-    risk_level = _derive_risk_level(report)
+    # The model writes explanations; aggregate severity stays code-controlled.
+    risk_level = _findings_risk_level(findings)
+    report.alert_status = _risk_to_alert_status(risk_level)
+    window = state.get("analysis_window")
+    if window:
+        report.analysis_start = window["start"]
+        report.analysis_end = window["end"]
     artifact = InvestigationArtifact(
         session_id=session_id,
         target=target,
@@ -180,8 +185,26 @@ def _extract_json_object(text: str) -> str | None:
 
 def _derive_risk_level(report: InvestigationReport) -> str:
     """Map alert_status to InvestigationArtifact risk_level vocabulary."""
-    mapping = {"normal": "low", "warning": "medium", "critical": "high"}
+    mapping = {"normal": "low", "warning": "medium", "critical": "critical"}
     return mapping.get(report.alert_status or "warning", "medium")
+
+
+def _findings_risk_level(findings: dict) -> str:
+    """Preserve the highest finding; incomplete evidence cannot mean healthy."""
+    order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    entries = [value for value in findings.values() if isinstance(value, dict)]
+    levels = [value.get("risk_level", "medium") for value in entries]
+    risk = max(levels, key=lambda value: order.get(value, 1)) if levels else "medium"
+    if risk == "low" and any(
+        value.get("evidence_status") in {"partial", "insufficient"} for value in entries
+    ):
+        return "medium"
+    return risk if risk in order else "medium"
+
+
+def _risk_to_alert_status(risk: str) -> str:
+    return {"low": "normal", "medium": "warning", "high": "warning",
+            "critical": "critical"}[risk]
 
 
 def _deterministic_report(target: str, findings: dict) -> InvestigationReport:
@@ -198,13 +221,7 @@ def _deterministic_report(target: str, findings: dict) -> InvestigationReport:
     sec_rl = security.get("risk_level", "low") if isinstance(security, dict) else "low"
 
     # alert_status: any critical → critical; any high → warning; else normal
-    levels = [str(log_rl), str(mac_rl), str(sec_rl)]
-    if "critical" in levels:
-        alert = "critical"
-    elif "high" in levels:
-        alert = "warning"
-    else:
-        alert = "normal"
+    alert = _risk_to_alert_status(_findings_risk_level(findings))
 
     # --- summary: per-dimension facts -------------------------------------
     parts: list[str] = []
@@ -241,7 +258,7 @@ def _deterministic_report(target: str, findings: dict) -> InvestigationReport:
     elif sec_rl in ("critical", "high"):
         root = "检测到 CC/DDoS 攻击标记，需确认攻击目标与清洗策略。"
     else:
-        root = "各维度未发现显著异常，建议结合原始数据人工复核。"
+        root = "当前证据未能确定根因；请结合数据覆盖情况与原始观测人工复核。"
 
     # --- recommendations: deterministic rule -------------------------------
     recs: list[str] = []

@@ -14,6 +14,7 @@ class ToolCallEvent(BaseModel):
     node: str
     tool_name: str
     tool_input: dict[str, Any]
+    call_id: str | None = None
 
 
 class ToolResultEvent(BaseModel):
@@ -21,6 +22,7 @@ class ToolResultEvent(BaseModel):
     node: str
     tool_name: str
     output: Any
+    call_id: str | None = None
 
 
 class ArtifactEvent(BaseModel):

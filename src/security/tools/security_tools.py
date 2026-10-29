@@ -3,9 +3,8 @@
 All tools use the adapter-injection pattern:
   _make_security_tools(cc_adapter, ddos_adapter) → list[BaseTool]
 
-The module-level ``SECURITY_TOOLS`` default constructs real adapters from settings,
-which are only evaluated at first import (not at module load — no import-time
-singletons; the list is built lazily via _make_security_tools()).
+Each bundle lazy-initializes and owns its default adapters. Injected adapters
+stay caller-owned; there is no process-wide tool list or client cache.
 """
 from __future__ import annotations
 
@@ -16,6 +15,7 @@ from langchain_core.tools import tool
 from runtime.config.settings import get_settings
 from security.adapters.cc import CCAdapter, PointStatus
 from security.adapters.ddos import DDoSAdapter
+from security.adapters.lifecycle import ToolBundle
 from security.collectors.gf_collector import GFCollector
 from security.collectors.node_resolver import NodeResolver
 from security.collectors.waf_collector import WAFCollector
@@ -73,40 +73,14 @@ def _make_security_tools(
 ):
     """Return list of security LangChain tools with injected adapters.
 
-    When adapters are None, they are created eagerly at factory scope and stored
-    in module-level variables for session-exit cleanup.
+    Default resources are cached lazily in this bundle's getter closures.
     """
-    global _sec_default_cc, _sec_default_ddos, _sec_default_gf, _sec_default_waf, _sec_default_nr
-    _cc = cc_adapter if cc_adapter is not None else CCAdapter()
-    _ddos = ddos_adapter if ddos_adapter is not None else DDoSAdapter()
-    _gf = gf_collector if gf_collector is not None else GFCollector()
-    _waf = waf_collector if waf_collector is not None else WAFCollector()
-    _nr = node_resolver if node_resolver is not None else NodeResolver()
-    if cc_adapter is None:
-        _sec_default_cc = _cc
-    if ddos_adapter is None:
-        _sec_default_ddos = _ddos
-    if gf_collector is None:
-        _sec_default_gf = _gf
-    if waf_collector is None:
-        _sec_default_waf = _waf
-    if node_resolver is None:
-        _sec_default_nr = _nr
-
-    def _get_cc() -> CCAdapter:
-        return _cc
-
-    def _get_ddos() -> DDoSAdapter:
-        return _ddos
-
-    def _get_gf() -> GFCollector:
-        return _gf
-
-    def _get_waf() -> WAFCollector:
-        return _waf
-
-    def _get_nr() -> NodeResolver:
-        return _nr
+    bundle = ToolBundle()
+    _get_cc = bundle.resource(CCAdapter, cc_adapter)
+    _get_ddos = bundle.resource(DDoSAdapter, ddos_adapter)
+    _get_gf = bundle.resource(GFCollector, gf_collector)
+    _get_waf = bundle.resource(WAFCollector, waf_collector)
+    _get_nr = bundle.resource(NodeResolver, node_resolver)
 
     @tool
     async def check_cc_status(ips: list[str]) -> dict:
@@ -221,37 +195,17 @@ def _make_security_tools(
         collector = _get_gf()
         return await collector.query_domain_protection_policy(domain, port)
 
-    return [
+    bundle.extend([
         check_cc_status,
         check_ddos_status,
         check_host_status,
         query_nodes_ip_by_ip,
         query_nodes_ip_by_domain,
         query_domain_protection_policy,
-    ]
+    ])
+    return bundle
 
 
-# Lazy-init factory: cached on first use.
-_security_tools_cache: list | None = None
-_sec_default_cc: CCAdapter | None = None
-_sec_default_ddos: DDoSAdapter | None = None
-_sec_default_gf: GFCollector | None = None
-_sec_default_waf: WAFCollector | None = None
-_sec_default_nr: NodeResolver | None = None
-
-
-def get_security_tools() -> list:
-    global _security_tools_cache
-    if _security_tools_cache is None:
-        _security_tools_cache = _make_security_tools()
-    return _security_tools_cache
-
-
-async def aclose_security_adapters() -> None:
-    """Close all default security adapters. Idempotent."""
-    global _sec_default_cc, _sec_default_ddos, _sec_default_gf, _sec_default_waf, _sec_default_nr
-    for adapter_attr in ("_sec_default_cc", "_sec_default_ddos", "_sec_default_gf", "_sec_default_waf", "_sec_default_nr"):
-        adapter = globals().get(adapter_attr)
-        if adapter is not None and hasattr(adapter, "aclose"):
-            await adapter.aclose()
-            globals()[adapter_attr] = None
+def get_security_tools() -> ToolBundle:
+    """Return a fresh factory scope; use as an async context manager."""
+    return _make_security_tools()

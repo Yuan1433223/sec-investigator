@@ -30,7 +30,9 @@ Implementation note:
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Callable
+from uuid import uuid4
 
 from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.config import get_stream_writer
@@ -185,8 +187,9 @@ def _traced(
     orig_coroutine = original.coroutine  # the underlying async callable
 
     if orig_coroutine is None:
-        # Sync-only tool — wrap _run instead (edge case; all current tools are async)
-        return original
+        # Keep synchronous RAG work off the event loop and trace it as well.
+        async def orig_coroutine(*args: Any, **kwargs: Any) -> Any:
+            return await asyncio.to_thread(original.func, *args, **kwargs)
 
     tool_name = original.name
 
@@ -194,7 +197,10 @@ def _traced(
         write = get_stream_writer()
         # Merge positional args into kwargs using the tool's arg_schema
         tool_input = _build_input_dict(original, args, kwargs)
-        write(ToolCallEvent(node=node_name, tool_name=tool_name, tool_input=tool_input))
+        call_id = uuid4().hex
+        write(ToolCallEvent(
+            node=node_name, tool_name=tool_name, tool_input=tool_input, call_id=call_id,
+        ))
         try:
             result = await orig_coroutine(*args, **kwargs)
         except Exception as exc:
@@ -203,6 +209,7 @@ def _traced(
                     node=node_name,
                     tool_name=tool_name,
                     output={"error": type(exc).__name__, "detail": str(exc)},
+                    call_id=call_id,
                 )
             )
             raise
@@ -239,7 +246,9 @@ def _traced(
             if consecutive_empty[0] >= max_empty:
                 result = _EARLY_STOP_TEMPLATE.format(n=consecutive_empty[0])
 
-        write(ToolResultEvent(node=node_name, tool_name=tool_name, output=result))
+        write(ToolResultEvent(
+            node=node_name, tool_name=tool_name, output=result, call_id=call_id,
+        ))
         return result
 
     return StructuredTool(

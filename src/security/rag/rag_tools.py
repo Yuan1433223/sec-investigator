@@ -6,14 +6,14 @@ until enough results are found or all rounds are exhausted.
 All tools use the adapter-injection pattern:
   _make_rag_tools(engine) → list[BaseTool]
 
-Module-level RAG_TOOLS constructs a real engine from settings.
-Tests inject a mock engine via _make_rag_tools(mock_engine).
+Each bundle lazily owns a default engine. Tests can inject a caller-owned engine.
 """
 from __future__ import annotations
 
 from langchain_core.tools import tool
 
 from security.rag.engine import RAGEngine
+from security.adapters.lifecycle import ToolBundle
 
 _SEARCH_ROUNDS = [
     {"threshold": 0.7, "top_k": 2},
@@ -26,16 +26,10 @@ _MAX_RESULTS = 5
 def _make_rag_tools(engine: RAGEngine | None = None):
     """Return list of RAG LangChain tools with injected engine.
 
-    When engine is None, a default RAGEngine is created at factory scope and
-    stored in _rag_default_engine for session-exit cleanup.
+    A default engine is lazy, cached for this bundle, and closed on exit.
     """
-    global _rag_default_engine
-    _engine = engine if engine is not None else RAGEngine()
-    if engine is None:
-        _rag_default_engine = _engine
-
-    def _get_engine() -> RAGEngine:
-        return _engine
+    bundle = ToolBundle()
+    _get_engine = bundle.resource(RAGEngine, engine)
 
     @tool
     def search_knowledge(query: str) -> str:
@@ -87,24 +81,10 @@ def _make_rag_tools(engine: RAGEngine | None = None):
             )
         return "\n\n---\n\n".join(parts)
 
-    return [search_knowledge]
+    bundle.extend([search_knowledge])
+    return bundle
 
 
-# Lazy-init factory: cached on first use.
-_rag_tools_cache: list | None = None
-_rag_default_engine: RAGEngine | None = None
-
-
-def get_rag_tools() -> list:
-    global _rag_tools_cache
-    if _rag_tools_cache is None:
-        _rag_tools_cache = _make_rag_tools()
-    return _rag_tools_cache
-
-
-async def aclose_rag_engine() -> None:
-    """Close the default RAG engine. Idempotent."""
-    global _rag_default_engine
-    if _rag_default_engine is not None and hasattr(_rag_default_engine, "aclose"):
-        await _rag_default_engine.aclose()
-        _rag_default_engine = None
+def get_rag_tools() -> ToolBundle:
+    """Return a fresh factory scope; use as an async context manager."""
+    return _make_rag_tools()

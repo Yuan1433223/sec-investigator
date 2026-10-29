@@ -23,6 +23,7 @@ from typing import Any
 from langchain_core.tools import tool
 
 from security.adapters.prometheus import PrometheusAdapter, _peak_value
+from security.adapters.lifecycle import ToolBundle
 
 
 def _ts(time_str: str) -> int:
@@ -36,17 +37,14 @@ def _make_prom_tools(adapter: PrometheusAdapter | None = None):
     """
     Factory returning a list of Prometheus tools bound to an adapter.
 
-    If adapter is None, a default PrometheusAdapter is created at factory scope
-    and stored in _prom_default_adapter for session-exit cleanup.
-    Pass a mock adapter in tests to avoid real HTTP calls.
+    The default adapter is created on first use and owned by this bundle.
+    An injected adapter stays caller-owned.
     """
-    global _prom_default_adapter
-    _cached: PrometheusAdapter = adapter if adapter is not None else PrometheusAdapter()
-    if adapter is None:
-        _prom_default_adapter = _cached
+    bundle = ToolBundle()
+    get_adapter = bundle.resource(PrometheusAdapter, adapter)
 
     async def _get() -> PrometheusAdapter:
-        return _cached
+        return get_adapter()
 
     @tool
     async def query_instance_uname(instance: str) -> dict[str, Any]:
@@ -256,7 +254,7 @@ def _make_prom_tools(adapter: PrometheusAdapter | None = None):
         peak = _peak_value(results)
         return {"sockets_used": int(round(peak)) if peak is not None else None}
 
-    return [
+    bundle.extend([
         query_instance_uname,
         query_instance_cpu,
         query_instance_memory,
@@ -265,7 +263,8 @@ def _make_prom_tools(adapter: PrometheusAdapter | None = None):
         query_instance_status,
         query_instance_disk,
         query_instance_socket,
-    ]
+    ])
+    return bundle
 
 
 async def _gather(*coros: Any) -> tuple[Any, ...]:
@@ -273,21 +272,6 @@ async def _gather(*coros: Any) -> tuple[Any, ...]:
     return tuple(await asyncio.gather(*coros))
 
 
-# Lazy-init factory: cached on first use.
-_prom_tools_cache: list | None = None
-_prom_default_adapter: PrometheusAdapter | None = None
-
-
-def get_prom_tools() -> list:
-    global _prom_tools_cache
-    if _prom_tools_cache is None:
-        _prom_tools_cache = _make_prom_tools()
-    return _prom_tools_cache
-
-
-async def aclose_prom_adapters() -> None:
-    """Close the default Prometheus adapter. Idempotent."""
-    global _prom_default_adapter
-    if _prom_default_adapter is not None:
-        await _prom_default_adapter.aclose()
-        _prom_default_adapter = None
+def get_prom_tools() -> ToolBundle:
+    """Return a fresh factory scope; use as an async context manager."""
+    return _make_prom_tools()

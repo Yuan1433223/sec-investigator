@@ -23,7 +23,6 @@ from langgraph.types import Command
 
 from runtime.checkpoint.factory import get_checkpointer
 from runtime.graph.investigation import build_investigation_graph
-from security.adapters.lifecycle import aclose_all_adapters
 from surfaces.web.sse import (
     DONE_FRAME,
     SSEFrame,
@@ -96,6 +95,7 @@ async def stream_investigation(req: InvestigationRequest) -> StreamingResponse:
         try:
             async with get_checkpointer() as checkpointer:
                 graph = build_investigation_graph(checkpointer=checkpointer)
+                pending_approval = None
                 async for event in graph.astream(
                     _build_input(req),
                     config=_graph_config(req.session_id),
@@ -104,17 +104,20 @@ async def stream_investigation(req: InvestigationRequest) -> StreamingResponse:
                 ):
                     ns, runtime_event = _unwrap(event)
                     frame = runtime_event_to_sse(runtime_event)
-                    if frame is not None:
+                    if frame is not None and frame.type == "approval_request":
+                        # Expose the action only once the interrupt is saved.
+                        pending_approval = frame
+                    elif frame is not None:
                         yield sse_frame_to_wire(frame)
+                if pending_approval is not None:
+                    yield sse_frame_to_wire(pending_approval)
         except Exception as exc:
             logger.exception("Stream error for session=%s", req.session_id)
             from surfaces.web.sse import SSEFrame
 
             frame = SSEFrame(type="error", data={"message": str(exc), "node": None})
             yield sse_frame_to_wire(frame)
-        finally:
-            await aclose_all_adapters()
-            yield DONE_FRAME
+        yield DONE_FRAME
 
     return StreamingResponse(_generate(), media_type="text/event-stream")
 
@@ -145,8 +148,6 @@ async def resume_investigation(req: ResumeRequest) -> StreamingResponse:
             logger.exception("Resume error for session=%s", req.session_id)
             frame = SSEFrame(type="error", data={"message": str(exc), "node": None})
             yield sse_frame_to_wire(frame)
-        finally:
-            await aclose_all_adapters()
-            yield DONE_FRAME
+        yield DONE_FRAME
 
     return StreamingResponse(_generate(), media_type="text/event-stream")

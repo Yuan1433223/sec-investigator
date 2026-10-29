@@ -80,11 +80,15 @@ class ESAdapter:
         response.raise_for_status()
         return response.json()
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         await self._client.aclose()
+
+    async def close(self) -> None:
+        """Compatibility alias for existing adapter callers."""
+        await self.aclose()
 
     async def __aenter__(self) -> ESAdapter:
         return self
 
     async def __aexit__(self, *_: object) -> None:
-        await self.close()
+        await self.aclose()

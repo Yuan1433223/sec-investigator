@@ -30,6 +30,7 @@ from langchain_core.tools import tool
 
 from security.adapters.es import ESAdapter, Source
 from security.adapters.es_dsl import ESDSLBuilder, _normalise_time
+from security.adapters.lifecycle import ToolBundle
 
 logger = logging.getLogger(__name__)
 
@@ -85,18 +86,14 @@ def _make_es_tools(adapter: ESAdapter | None = None):
     """
     Factory that returns a list of ES tools bound to the given adapter.
 
-    If adapter is None, a default ESAdapter is created at factory scope and
-    stored in the module-level `_es_default_adapter` so it can be closed on
-    session shutdown. All tool closures share the same adapter instance.
-    Pass a mock adapter in tests to avoid real ES connections.
+    Default adapter is lazy, cached within this bundle, and closed on exit.
+    An injected adapter stays caller-owned.
     """
-    global _es_default_adapter
-    _cached: ESAdapter = adapter if adapter is not None else ESAdapter()
-    if adapter is None:
-        _es_default_adapter = _cached
+    bundle = ToolBundle()
+    get_adapter = bundle.resource(ESAdapter, adapter)
 
     async def _adapter() -> ESAdapter:
-        return _cached
+        return get_adapter()
 
     @tool
     async def query_es_raw_logs(
@@ -698,7 +695,7 @@ def _make_es_tools(adapter: ESAdapter | None = None):
 
         return "客户无特殊业务，正常流程分析即可"
 
-    return [
+    bundle.extend([
         query_es_raw_logs,
         query_es_unique_count,
         query_es_top_n,
@@ -709,25 +706,10 @@ def _make_es_tools(adapter: ESAdapter | None = None):
         query_status_code_distribution,
         query_es_trend_comparison,
         query_customer_business_desc,
-    ]
+    ])
+    return bundle
 
 
-# Lazy-init factory: returns the cached tool list, creating it on first use.
-# The default adapter is stored in _es_default_adapter and closed on session exit.
-_es_tools_cache: list | None = None
-_es_default_adapter: ESAdapter | None = None
-
-
-def get_es_tools() -> list:
-    global _es_tools_cache
-    if _es_tools_cache is None:
-        _es_tools_cache = _make_es_tools()
-    return _es_tools_cache
-
-
-async def aclose_es_adapters() -> None:
-    """Close the default ES adapter if it exists. Idempotent."""
-    global _es_default_adapter
-    if _es_default_adapter is not None:
-        await _es_default_adapter.aclose()
-        _es_default_adapter = None
+def get_es_tools() -> ToolBundle:
+    """Return a fresh factory scope; use as an async context manager."""
+    return _make_es_tools()

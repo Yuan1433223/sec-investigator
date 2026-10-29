@@ -94,6 +94,13 @@ async def supervisor_node(state: SessionState) -> dict:
             write(ApprovalRequestEvent(session_id=session_id, findings=findings))
             next_node = "approval_gate"
 
+    if next_node in {"reporter", "approval_gate"}:
+        return {
+            "next_node": next_node,
+            "agent_task": f"Generate final report for {target}",
+            "status": "waiting_approval" if next_node == "approval_gate" else "running",
+        }
+
     task_prompt = (
         f"Target: {target} ({'IP address' if target_type == 'ip' else 'domain name'})\n"
         f"Resolved source: {state.get('source_type') or 'unknown'}\n"
@@ -101,6 +108,8 @@ async def supervisor_node(state: SessionState) -> dict:
         f"Next worker: {next_node}\n"
         f"Findings already collected: {list(findings.keys()) or '(none)'}\n"
         f"Conversation context: {len(messages)} turns so far\n\n"
+        f"Investigation request: {messages[-1].content if messages else target}\n"
+        f"Analysis window: {state.get('analysis_window') or 'not specified'}\n\n"
         f"Write a one-sentence task instruction for the {next_node} worker."
     )
     llm = build_model(_PLAYBOOK.model_profile)
@@ -114,8 +123,16 @@ async def supervisor_node(state: SessionState) -> dict:
         ]
     )
 
+    task = (
+        decision.agent_task if isinstance(decision, AgentTaskDecision)
+        else f"Investigate {target} using the {next_node} tools."
+    )
+    window = state.get("analysis_window")
+    if window:
+        task += f"\n调查时间窗：{window['start']} 至 {window['end']}。所有历史查询使用此时间窗。"
+
     return {
         "next_node": next_node,
-        "agent_task": decision.agent_task,
+        "agent_task": task,
         "status": "waiting_approval" if next_node == "approval_gate" else "running",
     }

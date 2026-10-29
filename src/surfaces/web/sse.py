@@ -47,13 +47,15 @@ def runtime_event_to_sse(event: RuntimeEvent) -> SSEFrame | None:
                 "node": event.node,
                 "tool_name": event.tool_name,
                 "tool_input": event.tool_input,
+                "call_id": event.call_id,
             },
         )
 
     if isinstance(event, ToolResultEvent):
         return SSEFrame(
             type="tool_result",
-            data={"node": event.node, "tool_name": event.tool_name, "output": event.output},
+            data={"node": event.node, "tool_name": event.tool_name,
+                  "output": event.output, "call_id": event.call_id},
         )
 
     if isinstance(event, ArtifactEvent):

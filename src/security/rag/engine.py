@@ -8,7 +8,9 @@ Migrated from KKShieldHelper-main/utils/fastgpt_rag/search_engine.py with:
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
+from uuid import uuid4
 
 import numpy as np
 from bson import ObjectId
@@ -18,7 +20,6 @@ from pymongo import MongoClient
 
 from runtime.config.settings import Settings, get_settings
 
-_MILVUS_ALIAS = "sec_rag"
 _MILVUS_COLLECTION = "modeldata"
 _MILVUS_DB = "fastgpt"
 _MONGO_DB = "fastgpt"
@@ -48,6 +49,8 @@ class RAGEngine:
         self._openai_base_url = s.openai_api_base
 
         self._initialized = False
+        self._milvus_alias = f"sec_rag_{uuid4().hex}"
+        self._milvus_connected = False
         self._collection: Collection | None = None
         self._mongo_db = None
         self._embedder: OpenAI | None = None
@@ -112,13 +115,21 @@ class RAGEngine:
 
         return self._fetch_documents(candidates)[:top_k]
 
+    async def aclose(self) -> None:
+        await asyncio.to_thread(self.close)
+
     def close(self) -> None:
         if self._mongo_db is not None:
             self._mongo_db.client.close()
-        try:
-            connections.disconnect(_MILVUS_ALIAS)
-        except Exception:
-            pass
+            self._mongo_db = None
+        if self._embedder is not None:
+            self._embedder.close()
+            self._embedder = None
+        if self._milvus_connected:
+            try:
+                connections.disconnect(self._milvus_alias)
+            finally:
+                self._milvus_connected = False
         self._initialized = False
 
     # ------------------------------------------------------------------
@@ -130,14 +141,15 @@ class RAGEngine:
             return
 
         connections.connect(
-            alias=_MILVUS_ALIAS,
+            alias=self._milvus_alias,
             host=self._milvus_host,
             port=str(self._milvus_port),
             user=self._milvus_user,
             password=self._milvus_password,
             db_name=_MILVUS_DB,
         )
-        self._collection = Collection(name=_MILVUS_COLLECTION, using=_MILVUS_ALIAS)
+        self._milvus_connected = True
+        self._collection = Collection(name=_MILVUS_COLLECTION, using=self._milvus_alias)
         try:
             self._collection.load()
         except Exception:

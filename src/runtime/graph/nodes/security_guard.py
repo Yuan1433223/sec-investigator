@@ -92,22 +92,23 @@ async def security_guard_node(state: SessionState) -> dict:
 
     llm = build_model(_PLAYBOOK.model_profile)
     collector = EvidenceCollector("security")
-    security_tools = get_security_tools() + [check_connection_status]
-    traced_tools = make_traced_tools(
-        security_tools, "security_guard", evidence_sink=collector.observe
-    )
-    agent = create_react_agent(
-        model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt,
-        name="security_guard",
-    )
-    resp = await ainvoke_react_agent(
-        agent,
-        [HumanMessage(content=task)],
-        recursion_limit=_RECURSION_LIMIT,
-        node="security_guard",
-        write=write,
-        degrade_message="Security tool budget exhausted; returning partial finding",
-    )
+    async with get_security_tools() as tools:
+        security_tools = tools + [check_connection_status]
+        traced_tools = make_traced_tools(
+            security_tools, "security_guard", evidence_sink=collector.observe
+        )
+        agent = create_react_agent(
+            model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt,
+            name="security_guard",
+        )
+        resp = await ainvoke_react_agent(
+            agent,
+            [HumanMessage(content=task)],
+            recursion_limit=_RECURSION_LIMIT,
+            node="security_guard",
+            write=write,
+            degrade_message="Security tool budget exhausted; returning partial finding",
+        )
     scoped_asset = active_asset(state)
     primary_asset = scoped_asset or select_primary_asset(
         state,
@@ -147,6 +148,7 @@ async def security_guard_node(state: SessionState) -> dict:
         for key, value in evidence.items():
             if value is not None:
                 findings_dict[key] = value
+        findings_dict["evidence_status"] = collector.evidence_status()
         findings_dict["risk_level"] = default_policy().classify_security(findings_dict)
         write(StatusEvent(node="security_guard", message="Security check complete (partial)"))
         result = {
@@ -179,9 +181,12 @@ async def security_guard_node(state: SessionState) -> dict:
 
     # Deterministic risk_level override — code-level policy, not LLM judgement.
     findings_dict = findings.model_dump()
+    for key in ("cc_is_under_attack", "ddos_exceeds_threshold", "cc_input_pps", "ddos_event_count"):
+        findings_dict[key] = evidence.get(key)
     for key, value in evidence.items():
         if value is not None:
             findings_dict[key] = value
+    findings_dict["evidence_status"] = collector.evidence_status()
     findings_dict["risk_level"] = default_policy().classify_security(findings_dict)
     _annotate_operational_issue(findings_dict)
 

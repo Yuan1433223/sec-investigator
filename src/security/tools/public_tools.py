@@ -22,6 +22,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from langchain_core.tools import tool
+from runtime.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -174,8 +175,11 @@ async def check_connection_status(targets: list[str]) -> dict[str, str]:
     Returns:
         Dict mapping each target to a reachability string, e.g.
         {"103.248.152.176": "reachable (avg 12ms)", "1.2.3.4": "unreachable"}.
+        In fake mode, returns an explicit not-checked result without network I/O.
     """
     logger.info("check_connection_status: targets=%s", targets)
+    if get_settings().data_source == "fake":
+        return {target: "not checked (fake data mode)" for target in targets}
     results = await asyncio.gather(*(_ping(t) for t in targets))
     return dict(zip(targets, results))
 

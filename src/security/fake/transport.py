@@ -243,14 +243,26 @@ def _es_response(profile: IncidentProfile, dsl: dict, source: str) -> dict[str, 
         field = items.get("terms", {}).get("field", "remote_addr")
         if items.get("aggs", {}).get("time_series"):
             buckets = []
-            for ip, count in profile.top_ips:
+            sub_agg = items["aggs"]["time_series"]["date_histogram"]
+            interval = sub_agg.get("fixed_interval", "1m")
+            trend = _trend_counts(profile, interval, start, end)
+            trend_total = sum(bucket["doc_count"] for bucket in trend)
+            for item in _terms_buckets(profile, field, total)[:items.get("terms", {}).get("size", 10)]:
+                count = item["doc_count"]
+                # Distribute each term's total across its time buckets; the
+                # previous implementation duplicated the entire QPS trend.
+                allocated = 0
+                sub_buckets = []
+                for index, bucket in enumerate(trend):
+                    part = (count - allocated if index == len(trend) - 1 else
+                            count * bucket["doc_count"] // trend_total if trend_total else 0)
+                    allocated += part
+                    sub_buckets.append({**bucket, "doc_count": part})
                 buckets.append(
                     {
-                        "key": ip,
+                        "key": item["key"],
                         "doc_count": count,
-                        "time_series": {
-                            "buckets": _trend_counts(profile, "1m", start, end)
-                        },
+                        "time_series": {"buckets": sub_buckets},
                     }
                 )
             return {"hits": hits_meta, "aggregations": {"top_items": {"buckets": buckets}}}
@@ -278,6 +290,9 @@ def _es_response(profile: IncidentProfile, dsl: dict, source: str) -> dict[str, 
         # status trend vs qps trend (distinguish by status filter in query)
         status_range = _status_filter(dsl)
         buckets = _trend_counts(profile, interval, start, end, status_range)
+        if status_range:
+            hits_meta = {"total": {"value": sum(bucket["doc_count"] for bucket in buckets),
+                                   "relation": "eq"}}
         return {"hits": hits_meta, "aggregations": {"result": {"buckets": buckets}}}
 
     # ---- top_n_ranking: terms under "result" ---------------------------------
@@ -302,10 +317,14 @@ def _terms_buckets(profile: IncidentProfile, field: str, total: int) -> list[dic
             {"key": code, "doc_count": int(total * share)}
             for code, share in sorted(profile.status_share.items())
         ]
-    # generic: request paths
+    # Keep the existing origin-fault sample distinct from the crawler sample.
+    if profile.key == "origin_5xx":
+        paths = (("/", 0.6), ("/api/list", 0.2), ("/health", 0.1), ("/api/user", 0.1))
+    else:
+        paths = (("/", 0.6), ("/forum.php", 0.18), ("/home.php?mod=rss", 0.12), ("/api/list", 0.10))
     return [
         {"key": path, "doc_count": int(total * share)}
-        for path, share in (("/", 0.6), ("/forum.php", 0.18), ("/home.php?mod=rss", 0.12), ("/api/list", 0.10))
+        for path, share in paths
     ]
 
 
@@ -321,19 +340,36 @@ def _raw_hits(
     node_ip = profile.node_ip
     client_ips = [ip for ip, _ in profile.top_ips] or ["203.0.113.9"]
     hits: list[dict[str, Any]] = []
-    base = datetime(2026, 4, 23, 12, 3, 0)
+    time_range = _extract_time_range(dsl)
+    start = _parse_dt(time_range[0]) if time_range else _parse_dt(profile.window_start)
+    base = _parse_dt(time_range[1]) if time_range else _parse_dt(profile.window_end)
+    base = base or _parse_dt(profile.window_end) or datetime(2026, 1, 1)
+    status_shares = sorted(profile.status_share.items())
     for i in range(size):
+        timestamp = max(base - timedelta(seconds=i * 3), start) if start else base - timedelta(seconds=i * 3)
+        sample = (i * 37 % 100) / 100
+        cumulative = 0.0
+        status = status_shares[-1][0] if status_shares else 200
+        for code, share in status_shares:
+            cumulative += share
+            if sample < cumulative:
+                status = code
+                break
+        path = "/forum.php" if profile.key == "crawler_4xx" and status == 404 else "/api/list"
+        ua = ("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+              if profile.key == "crawler_4xx" else "okhttp/3.12.6")
         src = {
-            "time": (base - timedelta(seconds=i * 3)).strftime("%Y-%m-%dT%H:%M:%S+08:00"),
-            "create_date": (base - timedelta(seconds=i * 3)).strftime(_ES_TIME_FORMAT),
+            "time": timestamp.strftime("%Y-%m-%dT%H:%M:%S+08:00"),
+            "create_date": timestamp.strftime(_ES_TIME_FORMAT),
             "http_host": domain,
             "server_addr": node_ip,
-            "status": 404 if i % 3 else 200,
+            "status": status,
             "remote_addr": client_ips[i % len(client_ips)],
-            "request_uri": "/forum.php" if i % 3 else "/",
+            "request_uri": path,
             "request_method": "GET",
-            "http_user_agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-            "upstream_status": 502 if profile.is_5xx and i % 3 == 0 else 200,
+            "http_user_agent": ua,
+            "upstream_status": status,
+            "upstream_addr": profile.origin_ip,
             "gamedun_id": f"game-{profile.key}",
             "server_name": domain,
         }
@@ -412,7 +448,8 @@ def _prom(request: httpx.Request) -> httpx.Response:
             }
         )
     if name.startswith("node_network") or name.startswith("node_disk"):
-        metric["device"] = (_DEVICE_RE.search(promql) or [None, "eth0"])[1]
+        default_device = "sda" if name.startswith("node_disk") else "eth0"
+        metric["device"] = (_DEVICE_RE.search(promql) or [None, default_device])[1]
 
     if is_range:
         start = int(params.get("start", 0))

@@ -52,28 +52,29 @@ async def log_detective_node(state: SessionState) -> dict:
     llm = build_model(_PLAYBOOK.model_profile)
     collector = EvidenceCollector("logs")
     # Build tool list at runtime (lazy factory, no module-level singleton)
-    log_tools = get_es_tools() + get_rag_tools() + [
-        get_gf_log_table_structure,
-        get_waf_log_table_structure,
-    ]
-    traced_tools = make_traced_tools(
-        log_tools, "log_detective", evidence_sink=collector.observe
-    )
-    agent = create_react_agent(
-        model=llm,
-        tools=traced_tools,
-        prompt=_PLAYBOOK.system_prompt,
-        name="log_detective",
-    )
+    async with get_es_tools() as es_tools, get_rag_tools() as rag_tools:
+        log_tools = es_tools + rag_tools + [
+            get_gf_log_table_structure,
+            get_waf_log_table_structure,
+        ]
+        traced_tools = make_traced_tools(
+            log_tools, "log_detective", evidence_sink=collector.observe
+        )
+        agent = create_react_agent(
+            model=llm,
+            tools=traced_tools,
+            prompt=_PLAYBOOK.system_prompt,
+            name="log_detective",
+        )
 
-    resp = await ainvoke_react_agent(
-        agent,
-        [HumanMessage(content=task)],
-        recursion_limit=_RECURSION_LIMIT,
-        node="log_detective",
-        write=write,
-        degrade_message="Log analysis tool budget exhausted; returning partial finding",
-    )
+        resp = await ainvoke_react_agent(
+            agent,
+            [HumanMessage(content=task)],
+            recursion_limit=_RECURSION_LIMIT,
+            node="log_detective",
+            write=write,
+            degrade_message="Log analysis tool budget exhausted; returning partial finding",
+        )
 
     # Deterministic telemetry straight from the tools the agent actually called.
     # These numbers override whatever the LLM extractor recalled (or dropped).
@@ -103,6 +104,7 @@ async def log_detective_node(state: SessionState) -> dict:
         for key, value in evidence.items():
             if value is not None:
                 findings_dict[key] = value
+        findings_dict["evidence_status"] = collector.evidence_status()
         findings_dict["risk_level"] = default_policy().classify_logs(findings_dict)
         write(StatusEvent(node="log_detective", message="Log analysis complete (partial)"))
         return {"messages": [], "findings": {"logs": findings_dict}}
@@ -128,10 +130,13 @@ async def log_detective_node(state: SessionState) -> dict:
     # Deterministic risk_level override — code-level policy, not LLM judgement.
     # Tool-derived raw numbers win over LLM-recalled fields.
     findings_dict = findings.model_dump()
+    for key in ("rate_5xx", "rate_4xx"):
+        findings_dict[key] = evidence.get(key)
     for key, value in evidence.items():
         if value is not None:
             findings_dict[key] = value
-    findings_dict["error_rate"] = _merged_error_rate(findings_dict.get("error_rate"), evidence)
+    findings_dict["error_rate"] = _error_rate_text(evidence)
+    findings_dict["evidence_status"] = collector.evidence_status()
     findings_dict["risk_level"] = default_policy().classify_logs(findings_dict)
 
     write(StatusEvent(node="log_detective", message="Log analysis complete"))
@@ -152,10 +157,3 @@ def _error_rate_text(evidence: dict) -> dict:
     if r4 is not None:
         out["4xx"] = f"{r4 * 100:.1f}%"
     return out
-
-
-def _merged_error_rate(existing: Any, evidence: dict) -> dict:
-    """Merge LLM error_rate with deterministic rates (deterministic wins)."""
-    base = dict(existing) if isinstance(existing, dict) else {}
-    base.update(_error_rate_text(evidence))
-    return base

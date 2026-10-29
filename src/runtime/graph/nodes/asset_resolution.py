@@ -10,11 +10,13 @@ from __future__ import annotations
 import re
 
 from runtime.state.session import SessionState
+from runtime.config.settings import get_settings
 from security.assets.capabilities import build_capability_scope
 from security.collectors.gf_collector import GFCollector, GFNode
 from security.collectors.node_resolver import NodeResolver
 from security.collectors.waf_collector import WAFCollector, WAFNode
 from security.schemas.node_machine import NodeMachine
+from security.fake.fixtures import get_profile
 
 _IPV4_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
 
@@ -140,7 +142,13 @@ async def asset_resolution_node(state: SessionState) -> dict:
         domain_policy=(target_type == "domain"),
     )
 
+    profile = None
+    if get_settings().data_source == "fake":
+        profile = get_profile(domain=target) if target_type == "domain" else get_profile(ip=target)
+
     return {
+        "analysis_window": ({"start": profile.window_start, "end": profile.window_end}
+                            if profile is not None else None),
         "target_type": target_type,
         "resolved_target": target,
         "source_type": source_type,

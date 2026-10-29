@@ -48,22 +48,23 @@ async def machine_check_node(state: SessionState) -> dict:
 
     llm = build_model(_PLAYBOOK.model_profile)
     collector = EvidenceCollector("machine")
-    traced_tools = make_traced_tools(
-        get_prom_tools(), "machine_check", evidence_sink=collector.observe
-    )
-    agent = create_react_agent(
-        model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt,
-        name="machine_check",
-    )
+    async with get_prom_tools() as prom_tools:
+        traced_tools = make_traced_tools(
+            prom_tools, "machine_check", evidence_sink=collector.observe
+        )
+        agent = create_react_agent(
+            model=llm, tools=traced_tools, prompt=_PLAYBOOK.system_prompt,
+            name="machine_check",
+        )
 
-    resp = await ainvoke_react_agent(
-        agent,
-        [HumanMessage(content=task)],
-        recursion_limit=_RECURSION_LIMIT,
-        node="machine_check",
-        write=write,
-        degrade_message="Infrastructure tool budget exhausted; returning partial finding",
-    )
+        resp = await ainvoke_react_agent(
+            agent,
+            [HumanMessage(content=task)],
+            recursion_limit=_RECURSION_LIMIT,
+            node="machine_check",
+            write=write,
+            degrade_message="Infrastructure tool budget exhausted; returning partial finding",
+        )
     scoped_asset = active_asset(state)
     primary_asset = scoped_asset or select_primary_asset(
         state,
@@ -98,6 +99,7 @@ async def machine_check_node(state: SessionState) -> dict:
         for key, value in evidence.items():
             if value is not None:
                 findings_dict[key] = value
+        findings_dict["evidence_status"] = collector.evidence_status()
         findings_dict["risk_level"] = default_policy().classify_machine(findings_dict)
         write(StatusEvent(node="machine_check", message="Infrastructure check complete (partial)"))
         result = {
@@ -129,9 +131,12 @@ async def machine_check_node(state: SessionState) -> dict:
 
     # Deterministic risk_level override — code-level policy, not LLM judgement.
     findings_dict = findings.model_dump()
+    for key in ("cpu_pct", "memory_pct", "tcp_established"):
+        findings_dict[key] = evidence.get(key)
     for key, value in evidence.items():
         if value is not None:
             findings_dict[key] = value
+    findings_dict["evidence_status"] = collector.evidence_status()
     findings_dict["risk_level"] = default_policy().classify_machine(findings_dict)
 
     write(StatusEvent(node="machine_check", message="Infrastructure check complete"))

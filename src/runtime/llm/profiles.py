@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+from urllib.parse import urlsplit
 
 from langchain_core.language_models import BaseChatModel
 
@@ -43,9 +44,9 @@ class ModelConfig:
 
 _REGISTRY: dict[ModelProfile, ModelConfig] = {
     ModelProfile.FAST_CLASSIFIER: ModelConfig(temperature=0.0, max_tokens=1024),
-    ModelProfile.TOOL_REASONER: ModelConfig(temperature=0.0),
+    ModelProfile.TOOL_REASONER: ModelConfig(temperature=0.0, max_tokens=4096),
     ModelProfile.STRUCTURED_EXTRACTOR: ModelConfig(temperature=0.0, max_tokens=2048),
-    ModelProfile.REPORT_WRITER: ModelConfig(temperature=0.3),
+    ModelProfile.REPORT_WRITER: ModelConfig(temperature=0.3, max_tokens=4096),
     ModelProfile.LONG_CONTEXT_ANALYST: ModelConfig(temperature=0.0),
     ModelProfile.LOCAL_OFFLINE_MODEL: ModelConfig(temperature=0.0, use_local=True),
 }
@@ -66,6 +67,15 @@ def build_model(
     """
     s = settings or get_settings()
     cfg = _REGISTRY[profile]
+    common: dict[str, Any] = {
+        "temperature": cfg.temperature,
+        "timeout": 90,
+        "max_retries": 0,
+        **(cfg.extra or {}),
+    }
+    if cfg.max_tokens is not None:
+        common["max_tokens"] = cfg.max_tokens
+    common.update(overrides)
 
     # Local endpoint always wins regardless of provider setting
     if cfg.use_local:
@@ -74,9 +84,7 @@ def build_model(
             model=s.local_model_name,
             api_key=s.local_model_api_key,
             base_url=s.local_model_base,
-            temperature=cfg.temperature,
-            **(cfg.extra or {}),
-            **overrides,
+            **common,
         )
 
     if s.llm_provider == "anthropic":
@@ -92,12 +100,8 @@ def build_model(
             "model": model_name,
             "api_key": s.anthropic_api_key,
             "base_url": s.anthropic_base_url,
-            "temperature": cfg.temperature,
-            **(cfg.extra or {}),
-            **overrides,
+            **common,
         }
-        if cfg.max_tokens is not None:
-            kwargs["max_tokens"] = cfg.max_tokens
         return ChatAnthropic(**kwargs)
 
     # Default: OpenAI-compatible
@@ -112,12 +116,13 @@ def build_model(
         "model": model_name,
         "api_key": s.openai_api_key or "placeholder",
         "base_url": s.openai_base_url,
-        "temperature": cfg.temperature,
-        **(cfg.extra or {}),
-        **overrides,
+        **common,
     }
-    if cfg.max_tokens is not None:
-        kwargs["max_tokens"] = cfg.max_tokens
+    # DeepSeek defaults to thinking mode, which rejects the named tool choice
+    # used by structured output. Keep this provider quirk inside model setup;
+    # non-thinking mode also avoids requiring reasoning_content round-trips.
+    if urlsplit(s.openai_base_url).hostname == "api.deepseek.com":
+        kwargs.setdefault("reasoning_effort", "none")
     return ChatOpenAI(**kwargs)
 
 

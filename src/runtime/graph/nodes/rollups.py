@@ -48,12 +48,19 @@ def _build_rollup(entries: list[dict[str, Any]], *, label: str) -> dict[str, Any
         for entry in entries
         if _RISK_ORDER.get(entry["risk_level"], 0) > _RISK_ORDER["low"]
     ]
+    coverage = [entry["details"].get("evidence_status", "insufficient") for entry in entries]
+    evidence_status = (
+        "available" if coverage and all(value == "available" for value in coverage)
+        else "partial" if any(value in {"available", "partial"} for value in coverage)
+        else "insufficient"
+    )
     return {
         "summary": f"{label} checks completed for {len(entries)} asset(s); highest risk={highest_risk}.",
         "risk_level": highest_risk,
         "asset_count": len(entries),
         "affected_assets": non_low_assets,
         "per_asset": entries,
+        "evidence_status": evidence_status,
     }
 
 

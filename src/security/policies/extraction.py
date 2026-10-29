@@ -145,6 +145,7 @@ def extract_log_evidence(messages: Iterable[Any]) -> dict[str, Any]:
     qps_sum: int = 0
     trend5 = trend4 = 0
     req_total = None
+    observed_trends: set[str] = set()
 
     for name, result in _iter_observations(messages):
         if not isinstance(result, dict):
@@ -164,16 +165,20 @@ def extract_log_evidence(messages: Iterable[Any]) -> dict[str, Any]:
             buckets = result.get("trend") or result.get("buckets") or []
             s = sum(_as_int(b.get("count")) or 0 for b in buckets if isinstance(b, dict))
             if result.get("status_type") == "5xx":
+                observed_trends.add("5xx")
                 trend5 += s
             elif result.get("status_type") == "4xx":
+                observed_trends.add("4xx")
                 trend4 += s
         if name == _LOG_COUNT:
             req_total = _as_int(result.get("count"))
 
     # Preferred fallback: QPS volume trend as the denominator.
     if qps_sum > 0:
-        out["rate_5xx"] = round(trend5 / qps_sum, 6)
-        out["rate_4xx"] = round(trend4 / qps_sum, 6)
+        if "5xx" in observed_trends:
+            out["rate_5xx"] = round(trend5 / qps_sum, 6)
+        if "4xx" in observed_trends:
+            out["rate_4xx"] = round(trend4 / qps_sum, 6)
         out.setdefault("total_requests", qps_sum)
         return out
 
@@ -288,3 +293,27 @@ class EvidenceCollector:
         if self.kind == "machine":
             return self.extract_machine()
         return self.extract_security()
+
+    def evidence_status(self) -> str:
+        """Coverage is about observed tool data, never LLM-recalled fields."""
+        evidence = self.extracted()
+        if self.kind == "logs":
+            rates = [evidence.get("rate_5xx"), evidence.get("rate_4xx")]
+            if all(value is not None for value in rates):
+                return "available"
+            return "partial" if any(value is not None for value in evidence.values()) else "insufficient"
+        if self.kind == "machine":
+            present = [evidence.get(key) is not None for key in ("cpu_pct", "memory_pct", "tcp_established")]
+        else:
+            observed = set()
+            for name, result in _iter_observations(self._observations):
+                if not isinstance(result, dict):
+                    continue
+                if name == _CC and result.get("status") == "ok" and result.get("points"):
+                    observed.add(_CC)
+                elif name == _DDOS and result.get("status") in (True, "ok") and isinstance(result.get("events"), list):
+                    observed.add(_DDOS)
+            present = [_CC in observed, _DDOS in observed]
+        if all(present):
+            return "available"
+        return "partial" if any(present) else "insufficient"
