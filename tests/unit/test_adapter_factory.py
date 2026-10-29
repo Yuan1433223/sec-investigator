@@ -1,109 +1,115 @@
-"""Unit test — adapter factory lazy-init, client reuse, and aclose lifecycle."""
-from __future__ import annotations
-
-from unittest.mock import AsyncMock, MagicMock
+"""Real resource contracts: lazy ownership, isolation, and cleanup on failure."""
+from unittest.mock import AsyncMock
 
 import pytest
 
-from security.tools.es_tools import get_es_tools, aclose_es_adapters, _es_default_adapter
-from security.tools.prom_tools import get_prom_tools, aclose_prom_adapters, _prom_default_adapter
-from security.tools.security_tools import get_security_tools, aclose_security_adapters, _security_tools_cache
-from security.rag.rag_tools import get_rag_tools, aclose_rag_engine, _rag_default_engine
+from runtime.config.settings import Settings
+from security.adapters.es import ESAdapter
+from security.adapters.lifecycle import ToolBundle
+from security.adapters.prometheus import PrometheusAdapter
+from security.rag.engine import RAGEngine
+from security.rag.rag_tools import get_rag_tools
+from security.tools.es_tools import get_es_tools
+from security.tools.prom_tools import get_prom_tools
+from security.tools.security_tools import get_security_tools
 
 
-def test_get_es_tools_caches_result():
-    """Second call returns the same list (cached, not recreated)."""
-    import security.tools.es_tools as es_mod
-    es_mod._es_tools_cache = None
-
-    first = get_es_tools()
-    second = get_es_tools()
-    assert first is second
-
-
-def test_get_prom_tools_caches_result():
-    import security.tools.prom_tools as prom_mod
-    prom_mod._prom_tools_cache = None
-
-    first = get_prom_tools()
-    second = get_prom_tools()
-    assert first is second
-
-
-def test_get_security_tools_caches_result():
-    import security.tools.security_tools as sec_mod
-    sec_mod._security_tools_cache = None
-
-    first = get_security_tools()
-    second = get_security_tools()
-    assert first is second
-
-
-def test_get_rag_tools_caches_result():
-    import security.rag.rag_tools as rag_mod
-    rag_mod._rag_tools_cache = None
-
-    first = get_rag_tools()
-    second = get_rag_tools()
-    assert first is second
+@pytest.mark.parametrize("factory", [get_es_tools, get_prom_tools, get_security_tools, get_rag_tools])
+def test_factories_do_not_share_tool_bundles(factory):
+    first, second = factory(), factory()
+    assert first is not second
+    assert [tool.name for tool in first] == [tool.name for tool in second]
 
 
 @pytest.mark.asyncio
-async def test_aclose_es_adapters_calls_aclose():
-    """aclose_es_adapters() actually awaits the adapter's aclose() and resets to None."""
-    import security.tools.es_tools as es_mod
-    mock_adapter = MagicMock()
-    mock_adapter.aclose = AsyncMock()
-    es_mod._es_default_adapter = mock_adapter
+async def test_default_es_is_lazy_reused_and_closed_with_real_interface(monkeypatch):
+    import security.tools.es_tools as module
+    created = []
 
-    await aclose_es_adapters()
-    mock_adapter.aclose.assert_called_once()
-    assert es_mod._es_default_adapter is None
+    def build():
+        adapter = ESAdapter(Settings(_env_file=None, data_source="fake"))
+        created.append(adapter)
+        return adapter
 
-    # Second call is idempotent (no double await)
-    await aclose_es_adapters()
-    mock_adapter.aclose.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_aclose_prom_adapters_calls_aclose():
-    import security.tools.prom_tools as prom_mod
-    mock_adapter = MagicMock()
-    mock_adapter.aclose = AsyncMock()
-    prom_mod._prom_default_adapter = mock_adapter
-
-    await aclose_prom_adapters()
-    mock_adapter.aclose.assert_called_once()
-    assert prom_mod._prom_default_adapter is None
+    monkeypatch.setattr(module, "ESAdapter", build)
+    bundle = get_es_tools()
+    assert not created
+    async with bundle:
+        tool = next(tool for tool in bundle if tool.name == "query_status_code_distribution")
+        args = {"query_by": "domain", "value": "api2.xs2027.cn",
+                "start_time": "2026-04-18 12:18:00", "end_time": "2026-04-18 12:36:00"}
+        assert (await tool.ainvoke(args))["current"]
+        await tool.ainvoke(args)
+        assert len(created) == 1
+        assert not created[0]._client.is_closed
+    assert created[0]._client.is_closed
+    await bundle.aclose()
 
 
 @pytest.mark.asyncio
-async def test_aclose_security_adapters_calls_aclose():
-    import security.tools.security_tools as sec_mod
-    mock_cc = MagicMock()
-    mock_cc.aclose = AsyncMock()
-    mock_ddos = MagicMock()
-    mock_ddos.aclose = AsyncMock()
-    sec_mod._sec_default_cc = mock_cc
-    sec_mod._sec_default_ddos = mock_ddos
-    sec_mod._sec_default_gf = None
-    sec_mod._sec_default_waf = None
-    sec_mod._sec_default_nr = None
+async def test_closing_one_bundle_does_not_close_another(monkeypatch):
+    import security.tools.prom_tools as module
+    created = []
 
-    await aclose_security_adapters()
-    mock_cc.aclose.assert_called_once()
-    mock_ddos.aclose.assert_called_once()
-    assert sec_mod._sec_default_cc is None
-    assert sec_mod._sec_default_ddos is None
+    def build():
+        adapter = PrometheusAdapter(Settings(_env_file=None, data_source="fake"))
+        created.append(adapter)
+        return adapter
+
+    monkeypatch.setattr(module, "PrometheusAdapter", build)
+    first, second = get_prom_tools(), get_prom_tools()
+    async with first, second:
+        first_tool = next(tool for tool in first if tool.name == "query_instance_uname")
+        second_tool = next(tool for tool in second if tool.name == "query_instance_uname")
+        await first_tool.ainvoke({"instance": "118.178.13.52"})
+        await second_tool.ainvoke({"instance": "118.178.13.52"})
+        await first.aclose()
+        assert created[0]._client.is_closed
+        assert not created[1]._client.is_closed
+        await second_tool.ainvoke({"instance": "118.178.13.52"})
+    assert created[1]._client.is_closed
 
 
 @pytest.mark.asyncio
-async def test_aclose_rag_engine_calls_aclose():
-    import security.rag.rag_tools as rag_mod
-    mock_engine = MagicMock()
-    mock_engine.aclose = AsyncMock()
-    rag_mod._rag_default_engine = mock_engine
+async def test_exception_unwinds_all_owned_resources():
+    class Resource:
+        aclose = AsyncMock()
 
-    await aclose_rag_engine()
-    mock_engine.aclose.assert_called_once()
-    assert rag_mod._rag_default_engine is None
+    first, second = Resource(), Resource()
+    first.aclose, second.aclose = AsyncMock(), AsyncMock()
+    bundle = ToolBundle()
+    with pytest.raises(ValueError, match="agent failed"):
+        async with bundle:
+            bundle.resource(lambda: first)()
+            bundle.resource(lambda: second)()
+            raise ValueError("agent failed")
+    first.aclose.assert_awaited_once()
+    second.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_supplied_adapter_stays_caller_owned():
+    adapter = ESAdapter(Settings(_env_file=None, data_source="fake"))
+    async with ToolBundle() as bundle:
+        assert bundle.resource(ESAdapter, adapter)() is adapter
+    assert not adapter._client.is_closed
+    await adapter.aclose()
+    assert adapter._client.is_closed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("adapter_type", [ESAdapter, PrometheusAdapter, RAGEngine])
+async def test_real_adapters_implement_aclose(adapter_type):
+    adapter = adapter_type(Settings(_env_file=None, data_source="fake"))
+    await adapter.aclose()
+
+
+@pytest.mark.asyncio
+async def test_unused_bundle_never_constructs_resource():
+    def forbidden():
+        raise AssertionError("unused adapter must not be created")
+
+    async with ToolBundle() as bundle:
+        get = bundle.resource(forbidden)
+    with pytest.raises(RuntimeError, match="closed"):
+        get()

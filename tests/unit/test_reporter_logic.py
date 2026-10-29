@@ -41,7 +41,7 @@ def test_derive_risk_level_warning():
 
 def test_derive_risk_level_critical():
     report = InvestigationReport(alert_status="critical")
-    assert _derive_risk_level(report) == "high"
+    assert _derive_risk_level(report) == "critical"
 
 
 def test_derive_risk_level_none_falls_back_to_medium():
@@ -161,7 +161,7 @@ def test_artifact_risk_level_matches_derive():
         recommendations=recs,
     )
 
-    assert artifact.risk_level == "high"
+    assert artifact.risk_level == "critical"
     assert artifact.summary == "System is under attack."
     assert "Block offending IPs." in artifact.recommendations
 
@@ -219,8 +219,8 @@ async def test_reporter_node_degrades_when_report_is_none():
 
     artifact = result["artifacts"][0]
     assert result["status"] == "completed"
-    # deterministic report: logs high → warning alert → medium risk
-    assert artifact["risk_level"] == "medium"
+    # Preserve the finding severity rather than downgrade via a report label.
+    assert artifact["risk_level"] == "high"
     # summary contains real findings data, not "报告生成失败" placeholder
     assert "报告生成失败" not in artifact["summary"]
     assert "5xx 突增" in artifact["summary"]
@@ -250,14 +250,14 @@ async def test_reporter_node_degrades_when_report_wrong_type():
         )
 
     assert result["status"] == "completed"
-    # empty findings → deterministic report → normal alert
-    assert result["artifacts"][0]["report"]["alert_status"] == "normal"
+    # Missing evidence cannot be reported as a healthy investigation.
+    assert result["artifacts"][0]["report"]["alert_status"] == "warning"
 
 
 def test_deterministic_report_empty_findings():
-    """Empty findings → normal alert, summary says no data collected."""
+    """Empty findings warn about missing data rather than assert health."""
     report = _deterministic_report("example.com", {})
-    assert report.alert_status == "normal"
+    assert report.alert_status == "warning"
     assert "未采集到数据" in report.summary
     assert report.root_cause
 

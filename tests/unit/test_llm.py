@@ -110,6 +110,7 @@ async def test_supervisor_node_Agent20260422_to_reporter():
 
     assert result["next_node"] == "reporter"
     assert result["agent_task"] == "Generate final report for 1.2.3.4"
+    mock_llm.with_structured_output.assert_not_called()
     assert result["status"] == "running"
 
 

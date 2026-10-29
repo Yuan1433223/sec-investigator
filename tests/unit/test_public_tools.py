@@ -63,9 +63,20 @@ async def test_check_connection_status_returns_dict_keyed_by_target():
 
 @pytest.mark.asyncio
 async def test_check_connection_status_maps_values():
-    with patch("security.tools.public_tools._ping_sync", return_value="unreachable"):
+    settings = MagicMock(data_source="real")
+    with (patch("security.tools.public_tools.get_settings", return_value=settings),
+          patch("security.tools.public_tools._ping_sync", return_value="unreachable")):
         result = await check_connection_status.ainvoke({"targets": ["1.2.3.4"]})
     assert result["1.2.3.4"] == "unreachable"
+
+
+@pytest.mark.asyncio
+async def test_fake_connection_status_does_not_ping():
+    settings = MagicMock(data_source="fake")
+    with (patch("security.tools.public_tools.get_settings", return_value=settings),
+          patch("security.tools.public_tools._ping_sync", side_effect=AssertionError("unexpected ping"))):
+        result = await check_connection_status.ainvoke({"targets": ["1.2.3.4"]})
+    assert result == {"1.2.3.4": "not checked (fake data mode)"}
 
 
 @pytest.mark.asyncio
