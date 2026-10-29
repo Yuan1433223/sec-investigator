@@ -11,6 +11,7 @@ const STATUS: Record<Phase, { text: string; cls: string }> = {
   running: { text: "调查中", cls: "running" },
   waiting_approval: { text: "待审批", cls: "waiting" },
   done: { text: "已完成", cls: "done" },
+  rejected: { text: "已终止", cls: "waiting" },
   error: { text: "出错", cls: "error" },
 };
 

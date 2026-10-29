@@ -37,9 +37,9 @@ export function PipelineRail({ activeNode, phase }: Props) {
       <div className="rail">
         {PHASES.map((p, i) => {
           const idx = PHASES.findIndex((x) => x.key === p.key);
-          const isActive = phase !== "done" && p.key === current;
-          const isDone = phase === "done" || (doneUpTo >= idx && doneUpTo !== -1);
-          const state = isActive ? "active" : isDone && phase !== "done" ? "done" : "";
+          const isActive = (phase === "running" || phase === "waiting_approval") && p.key === current;
+          const isDone = phase === "done" || (doneUpTo > idx && doneUpTo !== -1);
+          const state = isActive ? "active" : isDone ? "done" : "";
           return (
             <div key={p.key} style={{ display: "contents" }}>
               {i > 0 && <span className="rail-arrow" />}

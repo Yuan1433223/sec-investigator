@@ -77,11 +77,8 @@ export async function streamInvestigation(
         if (!dataLine) continue;
         const payload = dataLine.replace(/^data:\s?/, "").trim();
         if (!payload) continue;
-        try {
-          onEvent(JSON.parse(payload) as RuntimeEvent);
-        } catch {
-          /* 忽略无法解析的帧 */
-        }
+        const event = JSON.parse(payload) as RuntimeEvent;
+        onEvent(event);
       }
     }
   } finally {

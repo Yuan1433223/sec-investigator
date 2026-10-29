@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { ApprovalRequestEvent } from "../types";
@@ -15,10 +15,11 @@ export function ApprovalDialog({ request, onDecide }: Props) {
   );
 
   return (
-    <Dialog open={true} onOpenChange={(open) => { if (!open) onDecide(false); }}>
-      <DialogContent>
+    <Dialog open={true}>
+      <DialogContent className="[&>button]:hidden" onEscapeKeyDown={(event) => event.preventDefault()} onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>人工审批</DialogTitle>
+          <DialogDescription>请确认继续生成报告，或拒绝并结束本次调查。</DialogDescription>
           {highRisk && <Badge variant="critical">高危事件</Badge>}
         </DialogHeader>
         <div className="text-sm text-zinc-400 space-y-2">

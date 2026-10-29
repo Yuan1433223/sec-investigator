@@ -48,10 +48,10 @@ function ToolCard({ e }: { e: LogEntry }) {
               </ScrollArea>
             </div>
           )}
-          {e.outputSummary && (
+          {e.output !== undefined && (
             <div className="tool-detail-row">
               <span className="tool-detail-label">输出</span>
-              <pre className="tool-detail-json">{e.outputSummary}</pre>
+              <pre className="tool-detail-json" style={{ maxHeight: 256, overflow: "auto" }}>{typeof e.output === "string" ? e.output : JSON.stringify(e.output, null, 2)}</pre>
             </div>
           )}
         </div>

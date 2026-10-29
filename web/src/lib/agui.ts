@@ -10,8 +10,10 @@ import type { ApprovalRequestEvent, FinalEvent, FindingsMap, RuntimeEvent } from
 export type AGUIEvent =
   | { type: "RUN_STARTED"; runId: string }
   | { type: "STEP_STARTED"; stepId: string; message: string }
-  | { type: "TOOL_CALL_START"; stepId: string; toolName: string; input: Record<string, unknown> | undefined }
-  | { type: "TOOL_CALL_END"; toolName: string; output: unknown }
+  | { type: "TOOL_CALL_START"; stepId: string; callId?: string; toolName: string; input: Record<string, unknown> | undefined }
+  | { type: "TOOL_CALL_END"; stepId: string; callId?: string; toolName: string; output: unknown }
+  | { type: "APPROVAL_DECISION"; approved: boolean }
+  | { type: "RUN_FINISHED" }
   | { type: "STATE_SNAPSHOT"; findings: FindingsMap; finalReport?: FinalEvent; approvalReq?: ApprovalRequestEvent }
   | { type: "ERROR"; message: string };
 
@@ -20,9 +22,13 @@ export function mapToAGUI(ev: RuntimeEvent, _runId: string): AGUIEvent | null {
     case "status":
       return { type: "STEP_STARTED", stepId: ev.node, message: ev.message };
     case "tool_call":
-      return { type: "TOOL_CALL_START", stepId: ev.node, toolName: ev.tool_name, input: ev.tool_input };
+      return { type: "TOOL_CALL_START", stepId: ev.node, callId: ev.call_id ?? undefined, toolName: ev.tool_name, input: ev.tool_input };
     case "tool_result":
-      return { type: "TOOL_CALL_END", toolName: ev.tool_name, output: ev.output };
+      return { type: "TOOL_CALL_END", stepId: ev.node, callId: ev.call_id ?? undefined, toolName: ev.tool_name, output: ev.output };
+    case "approval_decision":
+      return { type: "APPROVAL_DECISION", approved: ev.approved };
+    case "done":
+      return { type: "RUN_FINISHED" };
     case "final":
       return { type: "STATE_SNAPSHOT", findings: ev.findings, finalReport: ev };
     case "approval_request":

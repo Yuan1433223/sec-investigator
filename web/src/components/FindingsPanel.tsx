@@ -72,6 +72,9 @@ export function FindingsPanel({ findings }: Props) {
               </span>
               <Badge variant={RISK_VARIANT[risk]}>{RISK_LABEL[risk] ?? risk}</Badge>
             </div>
+            {f.evidence_status && f.evidence_status !== "available" ? (
+              <div className="px-3 py-2 text-xs text-amber-300">{f.evidence_status === "partial" ? "部分证据已取得，数据覆盖不完整" : "证据不足，不能据此判断为正常"}</div>
+            ) : null}
             {f.summary ? <div className="text-xs text-zinc-100 px-3 py-2">{f.summary}</div> : null}
             {details.length > 0 ? (
               <ul className="px-3 py-2 pl-6 text-[11.5px] text-zinc-400 space-y-0.5">

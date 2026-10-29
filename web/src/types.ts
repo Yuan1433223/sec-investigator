@@ -6,6 +6,7 @@
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
 export interface Finding {
+  evidence_status?: "available" | "partial" | "insufficient";
   /** 维度：logs / machine / security 等 */
   dimension?: string;
   node_name?: string;
@@ -32,6 +33,7 @@ export interface ToolCallEvent {
   node: string;
   tool_name: string;
   tool_input: Record<string, unknown>;
+  call_id?: string | null;
   /** subgraph namespace scope (optional, for lane grouping) */
   scope?: string[];
 }
@@ -41,6 +43,7 @@ export interface ToolResultEvent {
   node: string;
   tool_name: string;
   output: unknown;
+  call_id?: string | null;
   /** subgraph namespace scope (optional, for lane grouping) */
   scope?: string[];
 }

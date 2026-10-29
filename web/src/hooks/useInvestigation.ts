@@ -1,14 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { newSessionId, resumeInvestigation, startInvestigation } from "../api";
 import { mapToAGUI } from "../lib/agui";
-import type {
-  ApprovalRequestEvent,
-  FindingsMap,
-  FinalEvent,
-  RuntimeEvent,
-} from "../types";
+import { completeToolEntry } from "../lib/tool-results";
+import type { ApprovalRequestEvent, FindingsMap, FinalEvent, RuntimeEvent } from "../types";
 
-export type Phase = "idle" | "running" | "waiting_approval" | "done" | "error";
+export type Phase = "idle" | "running" | "waiting_approval" | "done" | "rejected" | "error";
 
 export interface LogEntry {
   id: number;
@@ -16,14 +12,21 @@ export interface LogEntry {
   node: string;
   message: string;
   tool?: string;
-  /** tool input summary for tool cards */
+  toolCallId?: string;
   toolInput?: Record<string, unknown>;
-  /** extracted asset label (IP / hostname / domain) */
   asset?: string;
-  /** tool call completed */
   done?: boolean;
-  /** short summary of tool output */
-  outputSummary?: string;
+  output?: unknown;
+}
+
+function extractAsset(input: Record<string, unknown> | undefined): string | undefined {
+  if (!input) return undefined;
+  if (typeof input.instance === "string" && input.instance) {
+    return input.instance.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)?.[1] ?? input.instance;
+  }
+  if (Array.isArray(input.ips) && input.ips.length) return String(input.ips[0]);
+  const value = input.value ?? input.domain ?? input.ip;
+  return typeof value === "string" ? value : undefined;
 }
 
 export function useInvestigation() {
@@ -32,188 +35,148 @@ export function useInvestigation() {
   const [target, setTarget] = useState("");
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [activeNode, setActiveNode] = useState<string | null>(null);
-  const [approvalReq, setApprovalReq] = useState<ApprovalRequestEvent | null>(
-    null,
-  );
+  const [approvalReq, setApprovalReq] = useState<ApprovalRequestEvent | null>(null);
   const [findings, setFindings] = useState<FindingsMap>({});
   const [finalReport, setFinalReport] = useState<FinalEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   const seq = useRef(0);
+  const activeSessionRef = useRef("");
+  const streamGenerationRef = useRef(0);
   const waitingRef = useRef(false);
+  const terminalRef = useRef<"done" | "rejected" | "error" | null>(null);
   const decidingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const addEntry = useCallback(
-    (e: Omit<LogEntry, "id">) => {
-      seq.current += 1;
-      setEntries((prev) => [...prev, { ...e, id: seq.current }]);
-    },
-    [],
-  );
+  useEffect(() => () => abortRef.current?.abort(), []);
 
-  /** Extract a short asset label from tool_input (instance / ips / query_by / value). */
-  const extractAsset = (input: Record<string, unknown> | undefined): string | undefined => {
-    if (!input) return undefined;
-    const ipv4Re = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/;
-    const inst = input.instance;
-    if (typeof inst === "string" && inst) {
-      const m = inst.match(ipv4Re);
-      if (m) return m[1];
-      const segs = inst.split(":");
-      return segs[segs.length - 1] || inst;
-    }
-    const ips = input.ips;
-    if (Array.isArray(ips) && ips.length > 0) return String(ips[0]);
-    const qb = input.query_by ?? input.value;
-    if (typeof qb === "string" && qb) return qb;
-    return undefined;
-  };
+  const addEntry = useCallback((entry: Omit<LogEntry, "id">) => {
+    const id = ++seq.current;
+    setEntries((previous) => [...previous, { ...entry, id }]);
+  }, []);
 
-  /** Find the most recent matching tool_call entry to mark done. */
-  const markToolDone = (_node: string, toolName: string, output: unknown) => {
-    setEntries((prev) => {
-      // Find last matching tool entry that isn't done yet
-      for (let i = prev.length - 1; i >= 0; i--) {
-        const e = prev[i];
-        if (e.kind === "tool" && e.tool === toolName && !e.done) {
-          const updated = [...prev];
-          updated[i] = { ...e, done: true, outputSummary: summarizeOutput(output) };
-          return updated;
+  const fail = useCallback((message: string) => {
+    terminalRef.current = "error";
+    waitingRef.current = false;
+    setApprovalReq(null);
+    setError(message);
+    setActiveNode(null);
+    setPhase("error");
+  }, []);
+
+  const handleEvent = useCallback((event: RuntimeEvent) => {
+    const mapped = mapToAGUI(event, activeSessionRef.current);
+    if (!mapped) return;
+    switch (mapped.type) {
+      case "STEP_STARTED":
+        if (!terminalRef.current) setActiveNode(mapped.stepId);
+        addEntry({ kind: "status", node: mapped.stepId, message: mapped.message });
+        break;
+      case "TOOL_CALL_START":
+        addEntry({
+          kind: "tool", node: mapped.stepId, tool: mapped.toolName,
+          toolCallId: mapped.callId, message: "调用工具", toolInput: mapped.input,
+          asset: extractAsset(mapped.input), done: false,
+        });
+        break;
+      case "TOOL_CALL_END":
+        setEntries((previous) => completeToolEntry(
+          previous, mapped.stepId, mapped.toolName, mapped.output, mapped.callId,
+        ));
+        break;
+      case "STATE_SNAPSHOT":
+        setFindings(mapped.findings);
+        if (mapped.finalReport) {
+          terminalRef.current = "done";
+          waitingRef.current = false;
+          setFinalReport(mapped.finalReport);
+          setActiveNode(null);
+          setPhase("done");
         }
-      }
-      return prev;
-    });
-  };
-
-  const summarizeOutput = (out: unknown): string => {
-    if (out == null) return "";
-    try {
-      const s = typeof out === "string" ? out : JSON.stringify(out);
-      return s.length > 120 ? s.slice(0, 120) + "…" : s;
-    } catch {
-      return "";
+        if (mapped.approvalReq) {
+          waitingRef.current = true;
+          setApprovalReq(mapped.approvalReq);
+          setActiveNode("approval_gate");
+          setPhase("waiting_approval");
+        }
+        break;
+      case "APPROVAL_DECISION":
+        if (!mapped.approved) {
+          terminalRef.current = "rejected";
+          waitingRef.current = false;
+          setApprovalReq(null);
+          setActiveNode(null);
+          setPhase("rejected");
+        }
+        break;
+      case "RUN_FINISHED":
+        if (!waitingRef.current && !terminalRef.current) {
+          fail("调查流已结束，但未收到报告或审批结果，请重新开始调查。");
+        }
+        break;
+      case "ERROR":
+        fail(mapped.message);
+        break;
     }
-  };
+  }, [addEntry, fail]);
 
-  const handleEvent = useCallback(
-    (ev: RuntimeEvent) => {
-      // AG-UI adapter layer: all event dispatch goes through mapped AG-UI types
-      const ag = mapToAGUI(ev, sessionId || "run");
-      if (!ag) return;
-      // eslint-disable-next-line no-console
-      console.debug("[AG-UI]", ag.type);
-
-      switch (ag.type) {
-        case "STEP_STARTED":
-          setActiveNode(ag.stepId ?? null);
-          addEntry({ kind: "status", node: ag.stepId ?? "unknown", message: ag.message ?? "" });
-          break;
-        case "TOOL_CALL_START":
-          addEntry({
-            kind: "tool",
-            node: ag.stepId ?? "unknown",
-            tool: ag.toolName ?? "unknown",
-            message: "调用工具",
-            toolInput: ag.input as Record<string, unknown> | undefined,
-            asset: extractAsset(ag.input as Record<string, unknown> | undefined),
-            done: false,
-          });
-          break;
-        case "TOOL_CALL_END":
-          markToolDone("", ag.toolName ?? "", ag.output);
-          break;
-        case "STATE_SNAPSHOT":
-          if (ag.findings) setFindings(ag.findings);
-          if (ag.finalReport) {
-            setFinalReport(ag.finalReport);
-            setActiveNode(null);
-            if (!waitingRef.current) setPhase("done");
-          }
-          if (ag.approvalReq) {
-            setApprovalReq(ag.approvalReq);
-            waitingRef.current = true;
-            setPhase("waiting_approval");
-          }
-          break;
-        case "ERROR":
-          setError(ag.message ?? "未知错误");
-          setPhase("error");
-          break;
-        default:
-          break;
+  const start = useCallback(async (value: string) => {
+    abortRef.current?.abort();
+    const generation = ++streamGenerationRef.current;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const sid = newSessionId();
+    activeSessionRef.current = sid;
+    setSessionId(sid);
+    setTarget(value);
+    setEntries([]);
+    setApprovalReq(null);
+    setFindings({});
+    setFinalReport(null);
+    setError(null);
+    waitingRef.current = false;
+    terminalRef.current = null;
+    decidingRef.current = false;
+    setActiveNode("asset_resolution");
+    setPhase("running");
+    try {
+      await startInvestigation({ target: value, session_id: sid }, (event) => {
+        if (activeSessionRef.current === sid && streamGenerationRef.current === generation) handleEvent(event);
+      }, controller.signal);
+      if (activeSessionRef.current === sid && streamGenerationRef.current === generation) handleEvent({ type: "done" });
+    } catch (cause) {
+      if ((cause as Error).name !== "AbortError" && activeSessionRef.current === sid && streamGenerationRef.current === generation) {
+        fail((cause as Error).message);
       }
-    },
-    [addEntry, sessionId],
-  );
+    }
+  }, [fail, handleEvent]);
 
-  const start = useCallback(
-    async (t: string) => {
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      const sid = newSessionId();
-      setSessionId(sid);
-      setTarget(t);
-      setEntries([]);
-      setApprovalReq(null);
-      setFindings({});
-      setFinalReport(null);
-      setError(null);
-      waitingRef.current = false;
-      setActiveNode("asset_resolution");
-      setPhase("running");
-      try {
-        await startInvestigation(
-          { target: t, session_id: sid },
-          handleEvent,
-          ctrl.signal,
-        );
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        setError((err as Error).message);
-        setPhase("error");
+  const decide = useCallback(async (approved: boolean) => {
+    if (!approvalReq || decidingRef.current) return;
+    const sid = approvalReq.session_id;
+    decidingRef.current = true;
+    const generation = ++streamGenerationRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    addEntry({ kind: "status", node: "approval_gate", message: approved
+      ? "审批通过，继续生成报告" : "审批拒绝，终止调查" });
+    setApprovalReq(null);
+    waitingRef.current = false;
+    setPhase("running");
+    try {
+      await resumeInvestigation({ session_id: sid, approved, approver: "值班人员" }, (event) => {
+        if (activeSessionRef.current === sid && streamGenerationRef.current === generation) handleEvent(event);
+      }, controller.signal);
+      if (activeSessionRef.current === sid && streamGenerationRef.current === generation) handleEvent({ type: "done" });
+    } catch (cause) {
+      if ((cause as Error).name !== "AbortError" && activeSessionRef.current === sid && streamGenerationRef.current === generation) {
+        fail((cause as Error).message);
       }
-    },
-    [handleEvent],
-  );
+    } finally {
+      if (activeSessionRef.current === sid) decidingRef.current = false;
+    }
+  }, [addEntry, approvalReq, fail, handleEvent]);
 
-  const decide = useCallback(
-    async (approved: boolean) => {
-      if (!approvalReq || decidingRef.current) return;
-      decidingRef.current = true;
-      const decision = approved ? "审批通过，继续生成报告" : "审批拒绝，终止调查";
-      addEntry({ kind: "status", node: "approval_gate", message: decision });
-      // 立即关闭审批弹窗，进入"调查中"；resume 流随后驱动剩余事件
-      setApprovalReq(null);
-      waitingRef.current = false;
-      setPhase("running");
-      try {
-        await resumeInvestigation(
-          { session_id: sessionId, approved, approver: "值班人员" },
-          handleEvent,
-        );
-      } catch (err) {
-        setError((err as Error).message);
-        setPhase("error");
-      } finally {
-        decidingRef.current = false;
-      }
-    },
-    [addEntry, approvalReq, handleEvent, sessionId],
-  );
-
-  return {
-    phase,
-    sessionId,
-    target,
-    entries,
-    activeNode,
-    approvalReq,
-    findings,
-    finalReport,
-    error,
-    start,
-    decide,
-  };
+  return { phase, sessionId, target, entries, activeNode, approvalReq,
+    findings, finalReport, error, start, decide };
 }
