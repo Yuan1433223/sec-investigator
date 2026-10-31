@@ -1,8 +1,19 @@
-# sec-investigator
+# sec-investigator · 安全调查 Agent 工作台
+
+[![CI](https://github.com/Yuan1433223/sec-investigator/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuan1433223/sec-investigator/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/badge/tests-572%20passed-brightgreen)](#验证范围)
 
 **从企业安全运维场景抽离的Agent工程重构作品。** 基于LangGraph，将资产解析、工具取证、分项定级、人工审核和报告生成组织为受约束的状态工作流。
 
 项目源于实习阶段的安全调查场景，当前收敛为作品集版本：展示业务经验如何转化为状态契约、执行边界和工程设计。保留现有合成样例与适配器接口，不继续建设本地企业环境、扩充模拟业务或发展通用 Agent 平台。
+
+## 演示视频
+
+录屏演示了从样例选择、多阶段调查取证到人工审核与报告交付的完整动线（视频文件位于仓库根目录，约 9 MB）：
+
+<video src="sec-demo-video.mp4" controls preload="metadata" style="width:100%;max-width:960px;"></video>
+
+无法播放时，可直接查看或下载 [sec-demo-video.mp4](sec-demo-video.mp4)。
 
 ![系统架构与执行边界](docs/architecture.svg)
 
@@ -87,11 +98,11 @@ npm test
 npm run build
 ```
 
-2026-10-29 本地核验：离线后端测试和前端回归测试通过，TypeScript + Vite 构建通过。测试 Mock 外部端点，不需企业内网或实际模型调用。测试基于本机现有依赖环境，尚未验证全新机器安装。
+2026-10-31 本地核验：**572 项后端测试通过，前端回归测试通过，TypeScript + Vite 生产构建通过**；前端主脚本约 336 KB（gzip 约 106 KB）。测试 Mock 外部端点，不需企业内网或实际模型调用。测试基于本机现有依赖环境（Python 3.13），尚未验证全新机器安装。
 
 另使用 DeepSeek 与 fake 数据实跑源站故障样例，覆盖高危调查、人工批准、最终报告和拒绝后的终止状态。运行使用模型 API，可能产生费用；真实模型输出会随运行变化。
 
-仓库已配置 [GitHub Actions](.github/workflows/ci.yml) 运行测试与前端构建；实际 CI 状态以仓库 Actions 为准。事故 replay 中预置 findings 并 Mock 模型的部分验证流程与产物结构，不能据此宣称诊断准确率或线上效果。
+仓库已配置 [GitHub Actions](.github/workflows/ci.yml)，在 Python 3.12 与 Node 22 上运行后端测试、前端回归测试与生产构建；实际 CI 状态以仓库 Actions 为准。事故 replay 中预置 findings 并 Mock 模型的部分验证流程与产物结构，不能据此宣称诊断准确率或线上效果。
 
 ## 当前边界
 
